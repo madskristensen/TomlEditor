@@ -47,17 +47,16 @@ namespace TomlEditor
 
             List<ITagSpan<TokenTag>> list = new();
 
-            if (_document.Model == null)
+            if (_document.Model != null)
             {
-                return Task.CompletedTask;
-            }
+                TagDocument(list, _document.Model);
+                ConvertTables(list, _document.Model.Tables);
 
-            TagDocument(list, _document.Model);
-
-            if (list.Any())
-            {
-                CreateErrorListItems(list);
-                OnTagsUpdated(list);
+                if (list.Any())
+                {
+                    CreateErrorListItems(list);
+                    OnTagsUpdated(list);
+                }
             }
 
             return Task.CompletedTask;
@@ -80,7 +79,31 @@ namespace TomlEditor
             ConvertNodeToTag(list, item);
         }
 
-        private void ConvertNodeToTag(List<ITagSpan<TokenTag>> list, SyntaxNode item)
+        private void TagChildren(List<ITagSpan<TokenTag>> list, SyntaxNode prop)
+        {
+            for (var i = 0; i < prop.ChildrenCount; i++)
+            {
+                SyntaxNode child = prop.GetChildren(i);
+
+                if (child != null)
+                {
+                    ConvertNodeToTag(list, child, child.Kind);
+                    TagChildren(list, child);
+                }
+            }
+        }
+
+        private void ConvertTables(List<ITagSpan<TokenTag>> list, IEnumerable<TableSyntaxBase> tables)
+        {
+            foreach (TableSyntaxBase table in tables)
+            {
+                ConvertNodeToTag(list, table.OpenBracket, "table");
+                ConvertNodeToTag(list, table.Name, "table");
+                ConvertNodeToTag(list, table.CloseBracket, "table");
+            }
+        }
+
+        private void ConvertNodeToTag(List<ITagSpan<TokenTag>> list, SyntaxNode item, object type = null)
         {
             if (item == null || item.Span.End.Offset < 1 || item.Kind == SyntaxKind.Token)
             {
@@ -89,7 +112,7 @@ namespace TomlEditor
 
             var supportsOutlining = item is TableSyntaxBase table && table.Items.Any();
             SnapshotSpan span = new(Buffer.CurrentSnapshot, item.Span.ToSpan());
-            TokenTag tag = CreateToken(item.Kind, true, supportsOutlining, null);
+            TokenTag tag = CreateToken(type ?? item.Kind, true, supportsOutlining, null);
 
             list.Add(new TagSpan<TokenTag>(span, tag));
         }
@@ -100,17 +123,21 @@ namespace TomlEditor
             {
                 ITagSpan<TokenTag> span = list.FirstOrDefault(s => s.Span.Start <= error.Span.Start.Offset && s.Span.End >= error.Span.End.Offset + 1);
 
+                if (span == null)
+                {
+                    continue;
+                }
+
                 span.Tag.Errors = new[] {new  ErrorListItem
                 {
                     ProjectName = "",
                     FileName = _document.FileName,
-                    Message = error.Message,
+                    Message = error.Message.Replace("␍␤", ""),
                     ErrorCategory = error.Kind == DiagnosticMessageKind.Error ? PredefinedErrorTypeNames.SyntaxError : PredefinedErrorTypeNames.Warning,
                     Severity = error.Kind == DiagnosticMessageKind.Error ? __VSERRORCATEGORY.EC_ERROR : __VSERRORCATEGORY.EC_WARNING,
                     Line = error.Span.Start.Line,
                     Column = error.Span.Start.Column,
                     BuildTool = Vsix.Name,
-                    //ErrorCode = error.ErrorCode
                 }};
             }
         }

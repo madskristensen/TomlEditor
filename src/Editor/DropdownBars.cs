@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.Package;
@@ -9,7 +8,7 @@ using Tomlyn.Syntax;
 
 namespace TomlEditor
 {
-    internal class DropdownBars : TypeAndMemberDropdownBars, IDisposable
+    internal partial class DropdownBars : TypeAndMemberDropdownBars, IDisposable
     {
         private readonly LanguageService _languageService;
         private readonly IWpfTextView _textView;
@@ -65,7 +64,10 @@ namespace TomlEditor
             {
                 dropDownMembers.Clear();
 
-                GetHeadings()
+                var tables = _document.Model.Tables.ToList();
+                tables.Insert(0, new TableSyntax("Document"));
+
+                tables
                     .Select(headingBlock => CreateDropDownMember(headingBlock, textView))
                     .ToList()
                     .ForEach(ddm => dropDownMembers.Add(ddm));
@@ -91,29 +93,18 @@ namespace TomlEditor
             return true;
         }
 
-        private class HeadingVisitor : SyntaxVisitor
-        {
-            public List<TableSyntaxBase> List { get; } = new();
+        //private IEnumerable<TableSyntaxBase> GetHeadings()
+        //{
+        //    var visitor = new TableVisitor();
+        //    _document.Model.Accept(visitor);
 
-            public override void Visit(TableSyntax table) => List.Add(table);
-
-            public override void Visit(TableArraySyntax table) => List.Add(table);
-        }
-
-        private IEnumerable<TableSyntaxBase> GetHeadings()
-        {
-            var visitor = new HeadingVisitor();
-            _document.Model.Accept(visitor);
-
-            return visitor.List;
-        }
+        //    return visitor.List;
+        //}
 
         private static DropDownMember CreateDropDownMember(TableSyntaxBase headingBlock, IVsTextView textView)
         {
             TextSpan textSpan = GetTextSpan(headingBlock, textView);
-            textView.GetTextStream(textSpan.iStartLine, textSpan.iStartIndex, textSpan.iEndLine, textSpan.iEndIndex, out var headingText);
-
-            headingText = headingBlock.Name.ToString();
+            var headingText = headingBlock.Name.ToString();
 
             return new DropDownMember(headingText, textSpan, 126, DROPDOWNFONTATTR.FONTATTR_PLAIN);
         }

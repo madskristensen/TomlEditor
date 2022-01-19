@@ -17,8 +17,10 @@ namespace TomlEditor
     {
         public override Dictionary<object, string> ClassificationMap { get; } = new()
         {
+            { "table", PredefinedClassificationTypeNames.SymbolReference },
+            { "name", PredefinedClassificationTypeNames.SymbolDefinition },
+            { "operator", PredefinedClassificationTypeNames.Operator },
             { SyntaxKind.Key, PredefinedClassificationTypeNames.SymbolDefinition },
-            { SyntaxKind.DottedKeyItem, PredefinedClassificationTypeNames.SymbolDefinition },
             { SyntaxKind.String, PredefinedClassificationTypeNames.String },
             { SyntaxKind.Token, PredefinedClassificationTypeNames.Operator },
             { SyntaxKind.Float, PredefinedClassificationTypeNames.Number },

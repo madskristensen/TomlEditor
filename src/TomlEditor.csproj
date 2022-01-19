@@ -45,6 +45,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Commands\Commenting.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Document.cs" />
     <Compile Include="Editor\DropdownBars.cs" />
@@ -53,7 +54,6 @@
     <Compile Include="Editor\TokenTagger.cs" />
     <Compile Include="ExtensionMethods.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Commands\MyCommand.cs" />
     <Compile Include="TomlEditorPackage.cs" />
     <Compile Include="source.extension.cs">
       <AutoGen>True</AutoGen>
