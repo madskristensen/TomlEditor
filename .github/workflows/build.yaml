@@ -39,7 +39,7 @@ jobs:
         vsix-token-source-file: ${{ env.VsixManifestSourcePath }}
         
     - name: Build
-      run: msbuild /p:OutDir=\_built
+      run: msbuild /v:m -restore /p:OutDir=\_built
       
     #- name: Setup test
     #  uses: darenm/Setup-VSTest@v1
