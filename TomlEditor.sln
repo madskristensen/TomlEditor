@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32113.165
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TomlEditor", "src\TomlEditor.csproj", "{5360AC3C-F0B4-45E1-8E8A-57E34D688533}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4859962F-6A4D-4E30-B92A-4C21AEBCF7FB}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\build.yaml = .github\workflows\build.yaml
+		README.md = README.md
+		vs-publish.json = vs-publish.json
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5360AC3C-F0B4-45E1-8E8A-57E34D688533}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5360AC3C-F0B4-45E1-8E8A-57E34D688533}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5360AC3C-F0B4-45E1-8E8A-57E34D688533}.Debug|x86.ActiveCfg = Debug|x86
+		{5360AC3C-F0B4-45E1-8E8A-57E34D688533}.Debug|x86.Build.0 = Debug|x86
+		{5360AC3C-F0B4-45E1-8E8A-57E34D688533}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5360AC3C-F0B4-45E1-8E8A-57E34D688533}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5360AC3C-F0B4-45E1-8E8A-57E34D688533}.Release|x86.ActiveCfg = Release|x86
+		{5360AC3C-F0B4-45E1-8E8A-57E34D688533}.Release|x86.Build.0 = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D86D6383-E595-4B04-8C82-ED41C05F04F3}
+	EndGlobalSection
+EndGlobal
