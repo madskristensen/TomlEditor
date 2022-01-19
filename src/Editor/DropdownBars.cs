@@ -93,20 +93,22 @@ namespace TomlEditor
             return true;
         }
 
-        //private IEnumerable<TableSyntaxBase> GetHeadings()
-        //{
-        //    var visitor = new TableVisitor();
-        //    _document.Model.Accept(visitor);
-
-        //    return visitor.List;
-        //}
-
-        private static DropDownMember CreateDropDownMember(TableSyntaxBase headingBlock, IVsTextView textView)
+        private static DropDownMember CreateDropDownMember(TableSyntaxBase table, IVsTextView textView)
         {
-            TextSpan textSpan = GetTextSpan(headingBlock, textView);
-            var headingText = headingBlock.Name.ToString();
+            TextSpan textSpan = GetTextSpan(table, textView);
+            var headingText = GetTableName(table, out DROPDOWNFONTATTR format);
 
-            return new DropDownMember(headingText, textSpan, 126, DROPDOWNFONTATTR.FONTATTR_PLAIN);
+            return new DropDownMember(headingText, textSpan, 126, format);
+        }
+
+        private static string GetTableName(TableSyntaxBase table, out DROPDOWNFONTATTR format)
+        {
+            var name = table.Name.ToString();
+            var dots = name.Count(c => c == '.');
+
+            format = dots == 0 ? DROPDOWNFONTATTR.FONTATTR_BOLD : DROPDOWNFONTATTR.FONTATTR_PLAIN;
+
+            return new string(' ', dots * 2) + name;
         }
 
         private static TextSpan GetTextSpan(TableSyntaxBase headingBlock, IVsTextView textView)
