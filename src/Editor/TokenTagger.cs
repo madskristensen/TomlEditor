@@ -112,10 +112,13 @@ namespace TomlEditor
 
             AddComments(list, item.LeadingTrivia);
 
-            var supportsOutlining = item is TableSyntaxBase table && table.Items.Any();
-            SnapshotSpan span = new(Buffer.CurrentSnapshot, item.Span.ToSpan());
-            TokenTag tag = CreateToken(type ?? item.Kind, true, supportsOutlining, null);
-            list.Add(new TagSpan<TokenTag>(span, tag));
+            if (item.Kind != SyntaxKind.Token || type != null)
+            {
+                var supportsOutlining = item is TableSyntaxBase table && table.Items.Any();
+                SnapshotSpan span = new(Buffer.CurrentSnapshot, item.Span.ToSpan());
+                TokenTag tag = CreateToken(type ?? item.Kind, true, supportsOutlining, null);
+                list.Add(new TagSpan<TokenTag>(span, tag));
+            }
 
             AddComments(list, item.TrailingTrivia);
         }
