@@ -25,7 +25,7 @@ namespace TomlEditor
             preferences.EnableShowMatchingBrace = true;
             preferences.EnableCommenting = true;
             preferences.HighlightMatchingBraceFlags = _HighlightMatchingBraceFlags.HMB_USERECTANGLEBRACES;
-            preferences.LineNumbers = false;
+            preferences.LineNumbers = true;
             preferences.MaxErrorMessages = 100;
             preferences.AutoOutlining = false;
             preferences.MaxRegionTime = 2000;
@@ -34,8 +34,8 @@ namespace TomlEditor
             preferences.IndentStyle = IndentingStyle.Smart;
             preferences.ShowNavigationBar = true;
 
-            preferences.WordWrap = true;
-            preferences.WordWrapGlyphs = true;
+            preferences.WordWrap = false;
+            preferences.WordWrapGlyphs = false;
 
             preferences.AutoListMembers = true;
             preferences.EnableQuickInfo = true;

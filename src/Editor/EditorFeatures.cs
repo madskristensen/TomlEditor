@@ -21,6 +21,7 @@ namespace TomlEditor
             { "table", PredefinedClassificationTypeNames.SymbolReference },
             { "name", PredefinedClassificationTypeNames.SymbolDefinition },
             { "operator", PredefinedClassificationTypeNames.Operator },
+            { TokenKind.Comment, PredefinedClassificationTypeNames.Comment },
             { SyntaxKind.Key, PredefinedClassificationTypeNames.SymbolDefinition },
             { SyntaxKind.String, PredefinedClassificationTypeNames.String },
             { SyntaxKind.Token, PredefinedClassificationTypeNames.Operator },

@@ -49,8 +49,8 @@ namespace TomlEditor
 
             if (_document.Model != null)
             {
-                TagDocument(list, _document.Model);
                 ConvertTables(list, _document.Model.Tables);
+                TagDocument(list, _document.Model);
 
                 if (list.Any())
                 {
@@ -105,16 +105,32 @@ namespace TomlEditor
 
         private void ConvertNodeToTag(List<ITagSpan<TokenTag>> list, SyntaxNode item, object type = null)
         {
-            if (item == null || item.Span.End.Offset < 1 || item.Kind == SyntaxKind.Token)
+            if (item == null || item.Span.End.Offset < 1)
             {
                 return;
             }
 
+            AddComments(list, item.LeadingTrivia);
+
             var supportsOutlining = item is TableSyntaxBase table && table.Items.Any();
             SnapshotSpan span = new(Buffer.CurrentSnapshot, item.Span.ToSpan());
             TokenTag tag = CreateToken(type ?? item.Kind, true, supportsOutlining, null);
-
             list.Add(new TagSpan<TokenTag>(span, tag));
+
+            AddComments(list, item.TrailingTrivia);
+        }
+
+        private void AddComments(List<ITagSpan<TokenTag>> list, List<SyntaxTrivia> trivias)
+        {
+            if (trivias != null)
+            {
+                foreach (SyntaxTrivia trivia in trivias.Where(t => t.Kind == TokenKind.Comment))
+                {
+                    TokenTag commentTag = CreateToken(trivia.Kind, false, false, null);
+                    SnapshotSpan commentSpan = new(Buffer.CurrentSnapshot, trivia.Span.ToSpan());
+                    list.Add(new TagSpan<TokenTag>(commentSpan, commentTag));
+                }
+            }
         }
 
         private void CreateErrorListItems(List<ITagSpan<TokenTag>> list)
