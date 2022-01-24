@@ -6,5 +6,7 @@
         public const string FileExtension = ".toml";
 
         public const char CommentChar = '#';
+
+        public const string MarketplaceId = "MadsKristensen.TomlEditor";
     }
 }
