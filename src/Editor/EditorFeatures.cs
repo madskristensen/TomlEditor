@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.Composition;
-using BaseClasses;
 using Microsoft.VisualStudio.Language.Intellisense;
 using Microsoft.VisualStudio.Language.Intellisense.AsyncCompletion;
 using Microsoft.VisualStudio.Language.StandardClassification;
@@ -92,14 +91,14 @@ namespace TomlEditor
         protected override void Created(DocumentView docView)
         {
             _openedDate = DateTime.Now;
-            _rating = new RatingPrompt(Constants.MarketplaceId, Vsix.Name, Advanced.Instance, 5);
+            _rating = new RatingPrompt(Constants.MarketplaceId, Vsix.Name, AdvancedOptions.Instance, 5);
         }
 
         protected override void Closed(IWpfTextView textView)
         {
             if (_openedDate.AddMinutes(2) < DateTime.Now)
             {
-                _rating.RegisterSuccessfullUsage();
+                _rating.RegisterSuccessfulUsage();
             }
         }
     }

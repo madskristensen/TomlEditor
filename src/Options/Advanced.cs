@@ -1,16 +1,15 @@
 ﻿using System.ComponentModel;
 using System.Runtime.InteropServices;
-using BaseClasses;
 
 namespace TomlEditor
 {
     internal partial class OptionsProvider
     {
         [ComVisible(true)]
-        public class AdvancedOptions : BaseOptionPage<Advanced> { }
+        public class AdvancedOptionsPage : BaseOptionPage<AdvancedOptions> { }
     }
 
-    public class Advanced : BaseOptionModel<Advanced>, IRatingConfig
+    public class AdvancedOptions : BaseOptionModel<AdvancedOptions>, IRatingConfig
     {
         [Browsable(false)]
         public int RatingRequests { get; set; }

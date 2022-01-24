@@ -14,7 +14,7 @@ namespace TomlEditor
     [InstalledProductRegistration(Vsix.Name, Vsix.Description, Vsix.Version)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [Guid(PackageGuids.TomlEditorString)]
-    [ProvideOptionPage(typeof(OptionsProvider.AdvancedOptions), "TomlEditor", "Advanced", 0, 0, true, SupportsProfiles = true, NoShowAllView = true)]
+    [ProvideOptionPage(typeof(OptionsProvider.AdvancedOptionsPage), "TomlEditor", "Advanced", 0, 0, true, SupportsProfiles = true, NoShowAllView = true)]
 
     [ProvideLanguageService(typeof(LanguageFactory), Constants.LanguageName, 0, ShowHotURLs = false, DefaultToNonHotURLs = true, EnableLineNumbers = true, EnableAsyncCompletion = true, ShowCompletion = true, ShowDropDownOptions = true)]
     [ProvideLanguageExtension(typeof(LanguageFactory), Constants.FileExtension)]
