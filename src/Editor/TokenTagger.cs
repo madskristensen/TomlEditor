@@ -50,7 +50,7 @@ namespace TomlEditor
             if (_document.Model != null)
             {
                 ConvertTables(list, _document.Model.Tables);
-                TagDocument(list, _document.Model);
+                TagDocument(list);
 
                 if (list.Any())
                 {
@@ -62,33 +62,19 @@ namespace TomlEditor
             return Task.CompletedTask;
         }
 
-        private void TagDocument(List<ITagSpan<TokenTag>> list, SyntaxNode item)
+        private void TagDocument(List<ITagSpan<TokenTag>> list)
         {
-            for (var i = 0; i < item?.ChildrenCount; i++)
+            foreach (SyntaxNodeBase node in _document.Model.Tokens(true))
             {
-                if (_document.IsParsing)
+                if (node is SyntaxTrivia trivia && trivia.Kind == TokenKind.Comment)
                 {
-                    // Abort and wait for the next parse event to finish
-                    return;
+                    TokenTag commentTag = CreateToken(trivia.Kind, false, false, null);
+                    SnapshotSpan commentSpan = new(Buffer.CurrentSnapshot, trivia.Span.ToSpan());
+                    list.Add(new TagSpan<TokenTag>(commentSpan, commentTag));
                 }
-
-                SyntaxNode child = item.GetChildren(i);
-                TagDocument(list, child);
-            }
-
-            ConvertNodeToTag(list, item);
-        }
-
-        private void TagChildren(List<ITagSpan<TokenTag>> list, SyntaxNode prop)
-        {
-            for (var i = 0; i < prop.ChildrenCount; i++)
-            {
-                SyntaxNode child = prop.GetChildren(i);
-
-                if (child != null)
+                else if (node is SyntaxToken token && !string.IsNullOrWhiteSpace(token.Text))
                 {
-                    ConvertNodeToTag(list, child, child.Kind);
-                    TagChildren(list, child);
+                    ConvertNodeToTag(list, token, token.TokenKind);
                 }
             }
         }
@@ -103,44 +89,26 @@ namespace TomlEditor
             }
         }
 
-        private void ConvertNodeToTag(List<ITagSpan<TokenTag>> list, SyntaxNode item, object type = null)
+        private void ConvertNodeToTag(List<ITagSpan<TokenTag>> list, SyntaxNode item, object type)
         {
             if (item == null || item.Span.End.Offset < 1)
             {
                 return;
             }
 
-            AddComments(list, item.LeadingTrivia);
-
-            if (item.Kind != SyntaxKind.Token || type != null)
-            {
-                var supportsOutlining = item is TableSyntaxBase table && table.Items.Any();
-                SnapshotSpan span = new(Buffer.CurrentSnapshot, item.Span.ToSpan());
-                TokenTag tag = CreateToken(type ?? item.Kind, true, supportsOutlining, null);
-                list.Add(new TagSpan<TokenTag>(span, tag));
-            }
-
-            AddComments(list, item.TrailingTrivia);
-        }
-
-        private void AddComments(List<ITagSpan<TokenTag>> list, List<SyntaxTrivia> trivias)
-        {
-            if (trivias != null)
-            {
-                foreach (SyntaxTrivia trivia in trivias.Where(t => t.Kind == TokenKind.Comment))
-                {
-                    TokenTag commentTag = CreateToken(trivia.Kind, false, false, null);
-                    SnapshotSpan commentSpan = new(Buffer.CurrentSnapshot, trivia.Span.ToSpan());
-                    list.Add(new TagSpan<TokenTag>(commentSpan, commentTag));
-                }
-            }
+            var supportsOutlining = item is TableSyntaxBase table && table.Items.Any();
+            SnapshotSpan span = new(Buffer.CurrentSnapshot, item.Span.ToSpan());
+            TokenTag tag = CreateToken(type, true, supportsOutlining, null);
+            list.Add(new TagSpan<TokenTag>(span, tag));
         }
 
         private void CreateErrorListItems(List<ITagSpan<TokenTag>> list)
         {
             foreach (DiagnosticMessage error in _document.Model.Diagnostics)
             {
-                ITagSpan<TokenTag> span = list.FirstOrDefault(s => s.Span.Start <= error.Span.Start.Offset && s.Span.End >= error.Span.End.Offset + 1);
+                ITagSpan<TokenTag> span = 
+                    list.FirstOrDefault(s => s.Span.Start <= error.Span.Start.Offset && s.Span.End >= error.Span.End.Offset + 1) ??
+                    list.FirstOrDefault(s => s.Span.Start.GetContainingLineNumber() == error.Span.Start.Line);
 
                 if (span == null)
                 {

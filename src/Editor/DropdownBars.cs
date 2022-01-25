@@ -76,7 +76,7 @@ namespace TomlEditor
             if (dropDownTypes.Count == 0)
             {
                 var thisExt = $"{Vsix.Name} ({Vsix.Version})";
-                var markdig = Path.GetFileName($"   Powered by Tomlyn");
+                var markdig = Path.GetFileName($"   Powered by Tomlyn ({Tomlyn.Toml.Version})");
                 dropDownTypes.Add(new DropDownMember(thisExt, new TextSpan(), 126, DROPDOWNFONTATTR.FONTATTR_GRAY));
                 dropDownTypes.Add(new DropDownMember(markdig, new TextSpan(), 126, DROPDOWNFONTATTR.FONTATTR_GRAY));
             }

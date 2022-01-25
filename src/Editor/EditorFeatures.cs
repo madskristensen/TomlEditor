@@ -20,14 +20,14 @@ namespace TomlEditor
         {
             { "table", PredefinedClassificationTypeNames.SymbolReference },
             { "name", PredefinedClassificationTypeNames.SymbolDefinition },
-            { "operator", PredefinedClassificationTypeNames.Operator },
             { TokenKind.Comment, PredefinedClassificationTypeNames.Comment },
-            { SyntaxKind.Key, PredefinedClassificationTypeNames.SymbolDefinition },
-            { SyntaxKind.String, PredefinedClassificationTypeNames.String },
-            { SyntaxKind.Token, PredefinedClassificationTypeNames.Operator },
-            { SyntaxKind.Float, PredefinedClassificationTypeNames.Number },
-            { SyntaxKind.Integer, PredefinedClassificationTypeNames.Number },
-            { SyntaxKind.Boolean, PredefinedClassificationTypeNames.Keyword },
+            { TokenKind.BasicKey, PredefinedClassificationTypeNames.SymbolDefinition },
+            { TokenKind.String, PredefinedClassificationTypeNames.String },
+            { TokenKind.Equal, PredefinedClassificationTypeNames.Operator },
+            { TokenKind.Float, PredefinedClassificationTypeNames.Number },
+            { TokenKind.Integer, PredefinedClassificationTypeNames.Number },
+            { TokenKind.True, PredefinedClassificationTypeNames.Keyword },
+            { TokenKind.False, PredefinedClassificationTypeNames.Keyword },
         };
     }
 
