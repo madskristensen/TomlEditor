@@ -28,6 +28,7 @@ namespace TomlEditor
             { TokenKind.Integer, PredefinedClassificationTypeNames.Number },
             { TokenKind.True, PredefinedClassificationTypeNames.Keyword },
             { TokenKind.False, PredefinedClassificationTypeNames.Keyword },
+            { TokenKind.StringMulti, PredefinedClassificationTypeNames.String },
         };
     }
 
