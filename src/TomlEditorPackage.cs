@@ -24,6 +24,7 @@ namespace TomlEditor
     [ProvideEditorExtension(typeof(LanguageFactory), Constants.FileExtension, 65536, NameResourceID = 214)]
 
     [ProvideFileIcon(Constants.FileExtension, "d40a88fd-d311-40db-9df5-63680d49f8d3:0")]
+    [ProvideBindingPath()]
     public sealed class TomlEditorPackage : ToolkitPackage
     {
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
