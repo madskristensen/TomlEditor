@@ -108,12 +108,12 @@
     <PackageReference Include="Community.VisualStudio.Toolkit.17" Version="17.0.492" ExcludeAssets="Runtime">
       <IncludeAssets>compile; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.4.2120">
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.11.435">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Tomlyn">
-      <Version>0.16.2</Version>
+      <Version>0.17.0</Version>
     </PackageReference>
   </ItemGroup>
   <ItemGroup />
