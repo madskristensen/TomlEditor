@@ -1,4 +1,4 @@
-﻿global using System;
+global using System;
 global using Community.VisualStudio.Toolkit;
 global using Microsoft.VisualStudio.Shell;
 global using Task = System.Threading.Tasks.Task;
@@ -16,7 +16,7 @@ namespace TomlEditor
     [Guid(PackageGuids.TomlEditorString)]
     [ProvideOptionPage(typeof(OptionsProvider.AdvancedOptionsPage), "TomlEditor", "Advanced", 0, 0, true, SupportsProfiles = true, NoShowAllView = true)]
 
-    [ProvideLanguageService(typeof(LanguageFactory), Constants.LanguageName, 0, ShowHotURLs = false, DefaultToNonHotURLs = true, EnableLineNumbers = true, EnableAsyncCompletion = true, ShowCompletion = true, ShowDropDownOptions = true)]
+    [ProvideLanguageService(typeof(LanguageFactory), Constants.LanguageName, 0, ShowHotURLs = false, DefaultToNonHotURLs = true, EnableLineNumbers = true, EnableAsyncCompletion = true, ShowCompletion = true, ShowDropDownOptions = true, MatchBraces = true, MatchBracesAtCaret = true)]
     [ProvideLanguageExtension(typeof(LanguageFactory), Constants.FileExtension)]
 
     [ProvideEditorFactory(typeof(LanguageFactory), 214, false, CommonPhysicalViewAttributes = (int)__VSPHYSICALVIEWATTRIBUTES.PVA_SupportsPreview, TrustLevel = __VSEDITORTRUSTLEVEL.ETL_AlwaysTrusted)]
