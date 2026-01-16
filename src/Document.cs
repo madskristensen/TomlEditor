@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Threading;
 using Tomlyn;
@@ -8,8 +9,13 @@ namespace TomlEditor
 {
     public class Document : IDisposable
     {
+        private static readonly TimeSpan ParseDelay = TimeSpan.FromMilliseconds(300);
+
         private readonly ITextBuffer _buffer;
+        private readonly object _parseLock = new object();
+        private CancellationTokenSource _parseCts;
         private bool _isDisposed;
+        private volatile bool _isParsing;
 
         public Document(ITextBuffer buffer)
         {
@@ -17,44 +23,64 @@ namespace TomlEditor
             _buffer.Changed += OnBufferChanged;
 
             FileName = _buffer.GetFileName();
-            ParseAsync().FireAndForget();
+            RequestParse();
         }
 
         public string FileName { get; }
 
-        public bool IsParsing { get; private set; }
+        public bool IsParsing => _isParsing;
 
         public DocumentSyntax Model { get; private set; }
 
         private void OnBufferChanged(object sender, TextContentChangedEventArgs e)
         {
-            ParseAsync().FireAndForget();
+            RequestParse();
         }
 
-        private async Task ParseAsync()
+        private void RequestParse()
         {
-            IsParsing = true;
+            lock (_parseLock)
+            {
+                _parseCts?.Cancel();
+                _parseCts = new CancellationTokenSource();
+                ParseAsync(_parseCts.Token).FireAndForget();
+            }
+        }
+
+        private async Task ParseAsync(CancellationToken cancellationToken)
+        {
+            _isParsing = true;
             var success = false;
 
             try
             {
+                await Task.Delay(ParseDelay, cancellationToken);
                 await TaskScheduler.Default; // move to a background thread
 
-                var text = _buffer.CurrentSnapshot.GetText();
-                Model = Toml.Parse(text, FileName, TomlParserOptions.ParseAndValidate);
+                cancellationToken.ThrowIfCancellationRequested();
 
+                var text = _buffer.CurrentSnapshot.GetText();
+                var model = Toml.Parse(text, FileName, TomlParserOptions.ParseAndValidate);
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                Model = model;
                 success = true;
+            }
+            catch (OperationCanceledException)
+            {
+                // Parse was cancelled due to newer changes; ignore
             }
             finally
             {
-                IsParsing = false;
+                _isParsing = false;
 
                 if (success)
                 {
-                    Parsed?.Invoke(this);
+                    var handler = Parsed;
+                    handler?.Invoke(this);
                 }
             }
-
         }
 
         public void Dispose()
@@ -62,6 +88,8 @@ namespace TomlEditor
             if (!_isDisposed)
             {
                 _buffer.Changed -= OnBufferChanged;
+                _parseCts?.Cancel();
+                _parseCts?.Dispose();
                 Model = null;
             }
 
