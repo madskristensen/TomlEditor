@@ -38,8 +38,8 @@ namespace TomlEditor
 
         private static void FormatDocument(DocumentView doc)
         {
-            string text = doc.TextBuffer.CurrentSnapshot.GetText();
-            string formatted = FormatToml(text);
+            var text = doc.TextBuffer.CurrentSnapshot.GetText();
+            var formatted = FormatToml(text);
 
             if (formatted != null && formatted != text)
             {
@@ -60,16 +60,16 @@ namespace TomlEditor
 
             // Get lines that intersect with the selection to format complete lines
             ITextSnapshot snapshot = doc.TextBuffer.CurrentSnapshot;
-            int startLine = snapshot.GetLineNumberFromPosition(selection.Start);
-            int endLine = snapshot.GetLineNumberFromPosition(selection.End);
+            var startLine = snapshot.GetLineNumberFromPosition(selection.Start);
+            var endLine = snapshot.GetLineNumberFromPosition(selection.End);
 
             // Expand selection to full lines
             ITextSnapshotLine firstLine = snapshot.GetLineFromLineNumber(startLine);
             ITextSnapshotLine lastLine = snapshot.GetLineFromLineNumber(endLine);
             var expandedSpan = new SnapshotSpan(firstLine.Start, lastLine.End);
 
-            string selectedText = expandedSpan.GetText();
-            string formatted = FormatLines(selectedText);
+            var selectedText = expandedSpan.GetText();
+            var formatted = FormatLines(selectedText);
 
             if (formatted != null && formatted != selectedText)
             {
@@ -101,23 +101,23 @@ namespace TomlEditor
         /// </summary>
         private static string FormatLines(string text)
         {
-            string[] lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            var lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
             var formatted = new StringBuilder();
             var keyValuePattern = new Regex(@"^(\s*)([^#=\[\]]+?)\s*=\s*(.*)$");
 
-            for (int i = 0; i < lines.Length; i++)
+            for (var i = 0; i < lines.Length; i++)
             {
-                string line = lines[i];
-                string trimmed = line.TrimEnd();
+                var line = lines[i];
+                var trimmed = line.TrimEnd();
 
                 // Format key-value pairs: ensure single space around '='
                 Match match = keyValuePattern.Match(trimmed);
 
                 if (match.Success && !trimmed.TrimStart().StartsWith("#"))
                 {
-                    string indent = match.Groups[1].Value;
-                    string key = match.Groups[2].Value.Trim();
-                    string value = match.Groups[3].Value;
+                    var indent = match.Groups[1].Value;
+                    var key = match.Groups[2].Value.Trim();
+                    var value = match.Groups[3].Value;
 
                     trimmed = $"{indent}{key} = {value}";
                 }

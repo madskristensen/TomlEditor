@@ -28,8 +28,8 @@ namespace TomlEditor
                 ? new SnapshotSpan(selectedSpans.First().Start, selectedSpans.Last().End)
                 : new SnapshotSpan(textView.Caret.Position.BufferPosition, 0);
 
-            int startLineNumber = snapshot.GetLineNumberFromPosition(span.Start);
-            int endLineNumber = snapshot.GetLineNumberFromPosition(span.End);
+            var startLineNumber = snapshot.GetLineNumberFromPosition(span.Start);
+            var endLineNumber = snapshot.GetLineNumberFromPosition(span.End);
 
             // If selection ends at the start of a line, don't include that line
             if (span.Length > 0 && span.End == snapshot.GetLineFromLineNumber(endLineNumber).Start)
@@ -38,11 +38,11 @@ namespace TomlEditor
             }
 
             // Determine if we should comment or uncomment based on the first non-empty line
-            bool shouldComment = ShouldComment(snapshot, startLineNumber, endLineNumber);
+            var shouldComment = ShouldComment(snapshot, startLineNumber, endLineNumber);
 
             using (ITextEdit edit = buffer.CreateEdit())
             {
-                for (int i = startLineNumber; i <= endLineNumber; i++)
+                for (var i = startLineNumber; i <= endLineNumber; i++)
                 {
                     ITextSnapshotLine line = snapshot.GetLineFromLineNumber(i);
 
@@ -72,11 +72,11 @@ namespace TomlEditor
         /// </summary>
         private static bool ShouldComment(ITextSnapshot snapshot, int startLine, int endLine)
         {
-            for (int i = startLine; i <= endLine; i++)
+            for (var i = startLine; i <= endLine; i++)
             {
                 ITextSnapshotLine line = snapshot.GetLineFromLineNumber(i);
-                string lineText = line.GetText();
-                string trimmed = lineText.TrimStart();
+                var lineText = line.GetText();
+                var trimmed = lineText.TrimStart();
 
                 // Skip empty lines when determining comment state
                 if (string.IsNullOrEmpty(trimmed))
@@ -97,10 +97,10 @@ namespace TomlEditor
 
         private static void CommentLine(ITextEdit edit, ITextSnapshotLine line)
         {
-            string lineText = line.GetText();
+            var lineText = line.GetText();
 
             // Find the indentation to preserve it
-            int indentLength = lineText.Length - lineText.TrimStart().Length;
+            var indentLength = lineText.Length - lineText.TrimStart().Length;
 
             // Insert comment character after the indentation
             edit.Insert(line.Start.Position + indentLength, Constants.CommentChar.ToString());
@@ -108,14 +108,14 @@ namespace TomlEditor
 
         private static void UncommentLine(ITextEdit edit, ITextSnapshotLine line)
         {
-            string lineText = line.GetText();
-            int indentLength = lineText.Length - lineText.TrimStart().Length;
-            string trimmed = lineText.TrimStart();
+            var lineText = line.GetText();
+            var indentLength = lineText.Length - lineText.TrimStart().Length;
+            var trimmed = lineText.TrimStart();
 
             // Only uncomment if the line starts with a comment character
             if (trimmed.StartsWith(Constants.CommentChar.ToString()))
             {
-                int commentPosition = line.Start.Position + indentLength;
+                var commentPosition = line.Start.Position + indentLength;
                 edit.Delete(commentPosition, 1);
             }
         }

@@ -22,7 +22,7 @@ namespace TomlEditor
             SnapshotPoint caretPosition = textView.Caret.Position.BufferPosition;
             ITextSnapshotLine currentLine = caretPosition.GetContainingLine();
 
-            string lineText = currentLine.GetText();
+            var lineText = currentLine.GetText();
 
             using (ITextEdit edit = buffer.CreateEdit())
             {
@@ -35,7 +35,7 @@ namespace TomlEditor
                 else
                 {
                     // Insert a new line with the same indentation as the current line
-                    string indentation = GetIndentation(lineText);
+                    var indentation = GetIndentation(lineText);
                     edit.Insert(caretPosition.Position, Environment.NewLine + indentation);
                 }
 
@@ -59,7 +59,7 @@ namespace TomlEditor
             }
 
             // Extract leading whitespace from the line
-            int index = 0;
+            var index = 0;
             while (index < lineText.Length && char.IsWhiteSpace(lineText[index]))
             {
                 index++;
