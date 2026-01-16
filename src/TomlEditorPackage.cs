@@ -36,6 +36,7 @@ namespace TomlEditor
             ((IServiceContainer)this).AddService(typeof(LanguageFactory), language, true);
 
             await Commenting.InitializeAsync();
+            await Formatting.InitializeAsync();
         }
     }
 }
