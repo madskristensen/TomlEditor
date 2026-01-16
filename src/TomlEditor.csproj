@@ -48,6 +48,7 @@
     <Compile Include="Commands\Commenting.cs" />
     <Compile Include="Commands\Formatting.cs" />
     <Compile Include="Commands\SmartIndent.cs" />
+    <Compile Include="Commands\ToggleComment.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Document.cs" />
     <Compile Include="Editor\DropdownBars.cs" />
