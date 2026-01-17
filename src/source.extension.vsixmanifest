@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="TomlEditor.4e804652-a783-473b-827f-6e41f5a48b9b" Version="1.0.900" Language="en-US" Publisher="Mads Kristensen" />
+        <Identity Id="TomlEditor.4e804652-a783-473b-827f-6e41f5a48b9b" Version="1.0.901" Language="en-US" Publisher="Mads Kristensen" />
         <DisplayName>TOML Editor</DisplayName>
         <Description xml:space="preserve">TOML language support for Visual Studio with syntax highlighting, validation, outlining, and more...</Description>
         <MoreInfo>https://github.com/madskristensen/TomlEditor</MoreInfo>

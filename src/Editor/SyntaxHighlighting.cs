@@ -17,8 +17,8 @@ namespace TomlEditor
     {
         public override Dictionary<object, string> ClassificationMap { get; } = new()
         {
-            { "table", PredefinedClassificationTypeNames.Text },
-            { "name", PredefinedClassificationTypeNames.SymbolDefinition },
+            { "table", PredefinedClassificationTypeNames.WhiteSpace },
+            { "name", PredefinedClassificationTypeNames.SymbolReference },
             { TokenKind.Comment, PredefinedClassificationTypeNames.Comment },
             { TokenKind.BasicKey, PredefinedClassificationTypeNames.SymbolDefinition },
             { TokenKind.String, PredefinedClassificationTypeNames.String },

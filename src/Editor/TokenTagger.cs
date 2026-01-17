@@ -64,6 +64,9 @@ namespace TomlEditor
 
         private void TagDocument(List<ITagSpan<TokenTag>> list)
         {
+            SyntaxToken prevToken = null;
+            bool inTableName = false;
+
             foreach (SyntaxNodeBase node in _document.Model.Tokens(true))
             {
                 if (node is SyntaxTrivia trivia && trivia.Kind == TokenKind.Comment)
@@ -71,10 +74,32 @@ namespace TomlEditor
                     TokenTag commentTag = CreateToken(trivia.Kind, false, false, null);
                     SnapshotSpan commentSpan = new(Buffer.CurrentSnapshot, trivia.Span.ToSpan());
                     list.Add(new TagSpan<TokenTag>(commentSpan, commentTag));
+                    inTableName = false;
                 }
                 else if (node is SyntaxToken token && !string.IsNullOrWhiteSpace(token.Text))
                 {
-                    ConvertNodeToTag(list, token, token.TokenKind);
+                    // Check if we're starting a table name (after [ or [[)
+                    if (prevToken?.TokenKind == TokenKind.OpenBracket || prevToken?.TokenKind == TokenKind.OpenBracketDouble)
+                    {
+                        inTableName = true;
+                    }
+                    // Check if we're ending a table name (at ] or ]])
+                    else if (token.TokenKind == TokenKind.CloseBracket || token.TokenKind == TokenKind.CloseBracketDouble)
+                    {
+                        inTableName = false;
+                    }
+
+                    // Tag table name tokens with "name", everything else with their token kind
+                    if (inTableName && token.TokenKind != TokenKind.Dot)
+                    {
+                        ConvertNodeToTag(list, token, "name");
+                    }
+                    else
+                    {
+                        ConvertNodeToTag(list, token, token.TokenKind);
+                    }
+
+                    prevToken = token;
                 }
             }
         }
@@ -83,9 +108,8 @@ namespace TomlEditor
         {
             foreach (TableSyntaxBase table in tables)
             {
-                //ConvertNodeToTag(list, table.OpenBracket, "table");
+                // Tag the entire table for outlining support
                 ConvertNodeToTag(list, table, "table");
-                //ConvertNodeToTag(list, table.CloseBracket, "table");
             }
         }
 
