@@ -372,46 +372,110 @@ namespace TomlEditor.Schema
                     return null;
                 }
 
-                return CreatePropertyInfo(prop, path);
-            }
-
-            /// <summary>
-            /// Gets available completions at a given path in the schema.
-            /// </summary>
-            public async Task<IEnumerable<SchemaCompletion>> GetCompletionsAsync(string documentText, string tablePath, string fileName = null)
-            {
-                JsonSchema schema = await GetSchemaAsync(documentText, fileName);
-                if (schema == null)
-                {
-                return Enumerable.Empty<SchemaCompletion>();
-            }
-
-            JsonSchema targetSchema;
-                if (string.IsNullOrEmpty(tablePath))
-                {
-                    targetSchema = schema;
-                }
-                else
-                {
-                    JsonSchemaProperty prop = GetPropertyAtPath(schema, tablePath);
-                    targetSchema = prop?.ActualSchema;
+                    return CreatePropertyInfo(prop, path);
                 }
 
-                if (targetSchema?.ActualProperties == null)
+                /// <summary>
+                /// Gets available completions at a given path in the schema.
+                /// </summary>
+                public async Task<IEnumerable<SchemaCompletion>> GetCompletionsAsync(string documentText, string tablePath, string fileName = null)
                 {
-                    return Enumerable.Empty<SchemaCompletion>();
-                }
-
-                return targetSchema.ActualProperties.Select(kvp => new SchemaCompletion
-                {
-                    Key = kvp.Key,
-                    Description = kvp.Value.Description,
-                    Type = GetTypeString(kvp.Value),
-                            IsDeprecated = kvp.Value.IsDeprecated
-                        });
+                    JsonSchema schema = await GetSchemaAsync(documentText, fileName);
+                    if (schema == null)
+                    {
+                        return Enumerable.Empty<SchemaCompletion>();
                     }
 
-                    #region SchemaStore Catalog
+                    JsonSchema targetSchema;
+                    if (string.IsNullOrEmpty(tablePath))
+                    {
+                        targetSchema = schema;
+                    }
+                    else
+                    {
+                        JsonSchemaProperty prop = GetPropertyAtPath(schema, tablePath);
+                        targetSchema = prop?.ActualSchema;
+                    }
+
+                    if (targetSchema?.ActualProperties == null)
+                    {
+                        return Enumerable.Empty<SchemaCompletion>();
+                    }
+
+                    return targetSchema.ActualProperties.Select(kvp => new SchemaCompletion
+                    {
+                        Key = kvp.Key,
+                        Description = kvp.Value.Description,
+                        Type = GetTypeString(kvp.Value),
+                        IsDeprecated = kvp.Value.IsDeprecated
+                    });
+                }
+
+                /// <summary>
+                /// Gets available table name completions from the schema.
+                /// Returns all properties that are of type "object" (which map to TOML tables).
+                /// </summary>
+                public async Task<IEnumerable<SchemaCompletion>> GetTableCompletionsAsync(string documentText, string partialPath, string fileName = null)
+                {
+                    JsonSchema schema = await GetSchemaAsync(documentText, fileName);
+                    if (schema == null)
+                    {
+                        return Enumerable.Empty<SchemaCompletion>();
+                    }
+
+                    var results = new List<SchemaCompletion>();
+                    CollectTablePaths(schema, string.Empty, partialPath, results);
+                    return results;
+                }
+
+                /// <summary>
+                /// Recursively collects all table paths from the schema.
+                /// </summary>
+                private static void CollectTablePaths(JsonSchema schema, string currentPath, string partialPath, List<SchemaCompletion> results)
+                {
+                    if (schema?.ActualProperties == null)
+                    {
+                        return;
+                    }
+
+                    foreach (var kvp in schema.ActualProperties)
+                    {
+                        string fullPath = string.IsNullOrEmpty(currentPath) ? kvp.Key : $"{currentPath}.{kvp.Key}";
+                        var actualSchema = kvp.Value.ActualSchema;
+
+                        // Check if this property represents a table (object type)
+                        bool isTable = actualSchema?.Type == JsonObjectType.Object ||
+                                       actualSchema?.ActualProperties?.Count > 0;
+
+                        // Check if this property represents an array of tables
+                        bool isArrayOfTables = actualSchema?.Type == JsonObjectType.Array &&
+                                               actualSchema?.Item?.ActualProperties?.Count > 0;
+
+                        if (isTable || isArrayOfTables)
+                        {
+                            // Only include if it matches the partial path (prefix match)
+                            if (string.IsNullOrEmpty(partialPath) || fullPath.StartsWith(partialPath, StringComparison.OrdinalIgnoreCase))
+                            {
+                                results.Add(new SchemaCompletion
+                                {
+                                    Key = fullPath,
+                                    Description = kvp.Value.Description ?? actualSchema?.Description,
+                                    Type = isArrayOfTables ? "array of tables" : "table",
+                                    IsDeprecated = kvp.Value.IsDeprecated
+                                });
+                            }
+
+                            // Recurse into nested tables
+                            var nestedSchema = isArrayOfTables ? actualSchema?.Item : actualSchema;
+                            if (nestedSchema != null)
+                            {
+                                CollectTablePaths(nestedSchema, fullPath, partialPath, results);
+                            }
+                        }
+                    }
+                }
+
+                #region SchemaStore Catalog
 
                     private static async Task LoadCatalogAsync()
                     {

@@ -32,6 +32,7 @@ namespace TomlEditor.Schema
     {
         private static readonly ImageElement KeyIcon = new ImageElement(KnownMonikers.Property.ToImageId(), "Key");
         private static readonly ImageElement ValueIcon = new ImageElement(KnownMonikers.EnumerationItemPublic.ToImageId(), "Value");
+        private static readonly ImageElement TableIcon = new ImageElement(KnownMonikers.TableGroup.ToImageId(), "Table");
         private static readonly ImageElement DeprecatedIcon = new ImageElement(KnownMonikers.StatusWarning.ToImageId(), "Deprecated");
 
         private readonly ITextView _textView;
@@ -71,10 +72,27 @@ namespace TomlEditor.Schema
                 return CompletionStartData.DoesNotParticipateInCompletion;
             }
 
-            // Don't complete inside table headers [table] or [[array]]
-            if (textBeforeCaret.TrimStart().StartsWith("["))
+            // Check if we're inside a table header [table] or [[array]]
+            string trimmed = textBeforeCaret.TrimStart();
+            if (trimmed.StartsWith("[[") || trimmed.StartsWith("["))
             {
-                return CompletionStartData.DoesNotParticipateInCompletion;
+                // Table header completion - find start of table name after [ or [[
+                int bracketStart = textBeforeCaret.LastIndexOf('[');
+                int tableNameStart = bracketStart + 1;
+
+                // Skip second bracket for array tables [[
+                if (bracketStart > 0 && textBeforeCaret[bracketStart - 1] == '[')
+                {
+                    // Already handled by LastIndexOf finding the second [
+                }
+                else if (bracketStart + 1 < textBeforeCaret.Length && textBeforeCaret[bracketStart + 1] == '[')
+                {
+                    tableNameStart = bracketStart + 2;
+                }
+
+                return new CompletionStartData(
+                    CompletionParticipation.ProvidesItems,
+                    new SnapshotSpan(line.Start + tableNameStart, triggerLocation));
             }
 
             // Check if we're after an '=' sign (value position)
@@ -91,23 +109,23 @@ namespace TomlEditor.Schema
                     new SnapshotSpan(triggerLocation.Snapshot, valueStart, afterEquals.Length));
             }
 
-                // Key completion - find the start of the current word
-                int wordStart = column;
+            // Key completion - find the start of the current word
+            int wordStart = column;
 
-                while (wordStart > 0 && IsKeyChar(lineText[wordStart - 1]))
-                {
-                    wordStart--;
-                }
-
-                // Create applicable span - from word start to caret position
-                // This can be a zero-length span for invocation on blank line, which is valid
-                SnapshotSpan applicableSpan = new SnapshotSpan(line.Start + wordStart, triggerLocation);
-
-                // Always provide completions for key position (both for typing and Ctrl+Space invocation)
-                return new CompletionStartData(
-                    CompletionParticipation.ProvidesItems,
-                    applicableSpan);
+            while (wordStart > 0 && IsKeyChar(lineText[wordStart - 1]))
+            {
+                wordStart--;
             }
+
+            // Create applicable span - from word start to caret position
+            // This can be a zero-length span for invocation on blank line, which is valid
+            SnapshotSpan applicableSpan = new SnapshotSpan(line.Start + wordStart, triggerLocation);
+
+            // Always provide completions for key position (both for typing and Ctrl+Space invocation)
+            return new CompletionStartData(
+                CompletionParticipation.ProvidesItems,
+                applicableSpan);
+        }
 
         public async Task<CompletionContext> GetCompletionContextAsync(
             IAsyncCompletionSession session,
@@ -123,7 +141,43 @@ namespace TomlEditor.Schema
 
             var items = new List<CompletionItem>();
 
-            if (context.IsValuePosition)
+            if (context.IsTableHeader)
+            {
+                // Get table name completions from schema
+                IEnumerable<SchemaCompletion> completions = await _schemaService.GetTableCompletionsAsync(documentText, context.PartialTableName, fileName);
+                HashSet<string> existingTables = GetExistingTableNames(document);
+
+                foreach (SchemaCompletion completion in completions)
+                {
+                    // Skip tables that already exist (unless it's an array table which can have multiple)
+                    if (!context.IsArrayTable && existingTables.Contains(completion.Key))
+                    {
+                        continue;
+                    }
+
+                    ImageElement icon = completion.IsDeprecated ? DeprecatedIcon : TableIcon;
+                    string displayText = completion.IsDeprecated ? $"{completion.Key} (deprecated)" : completion.Key;
+                    string insertText = completion.Key;
+
+                    var item = new CompletionItem(
+                        displayText,
+                        this,
+                        icon,
+                        ImmutableArray<CompletionFilter>.Empty,
+                        string.Empty,
+                        insertText,
+                        insertText,
+                        insertText,
+                        ImmutableArray<ImageElement>.Empty);
+
+                    item.Properties.AddProperty("Description", completion.Description ?? string.Empty);
+                    item.Properties.AddProperty("Type", completion.Type ?? string.Empty);
+                    item.Properties.AddProperty("IsDeprecated", completion.IsDeprecated);
+
+                    items.Add(item);
+                }
+            }
+            else if (context.IsValuePosition)
             {
                 // Get property info to check for enums or booleans
                 string propertyPath = string.IsNullOrEmpty(context.TablePath)
@@ -137,27 +191,27 @@ namespace TomlEditor.Schema
                     // Add enum completions
                     if (propInfo.EnumValues != null)
                     {
-                                    foreach (string value in propInfo.EnumValues)
-                                    {
-                                        string displayText = $"\"{value}\"";
-                                        items.Add(new CompletionItem(displayText, this, ValueIcon));
-                                    }
-                                }
-                                // Add boolean completions
-                                else if (propInfo.Type == "boolean")
-                                {
-                                    items.Add(new CompletionItem("true", this, ValueIcon));
-                                    items.Add(new CompletionItem("false", this, ValueIcon));
-                                }
-                            }
-                        }
-                        else
+                        foreach (string value in propInfo.EnumValues)
                         {
-                            // Get key completions from schema
-                            IEnumerable<SchemaCompletion> completions = await _schemaService.GetCompletionsAsync(documentText, context.TablePath, fileName);
-                            HashSet<string> existingKeys = GetExistingKeys(document, context.TablePath);
+                            string displayText = $"\"{value}\"";
+                            items.Add(new CompletionItem(displayText, this, ValueIcon));
+                        }
+                    }
+                    // Add boolean completions
+                    else if (propInfo.Type == "boolean")
+                    {
+                        items.Add(new CompletionItem("true", this, ValueIcon));
+                        items.Add(new CompletionItem("false", this, ValueIcon));
+                    }
+                }
+            }
+            else
+            {
+                // Get key completions from schema
+                IEnumerable<SchemaCompletion> completions = await _schemaService.GetCompletionsAsync(documentText, context.TablePath, fileName);
+                HashSet<string> existingKeys = GetExistingKeys(document, context.TablePath);
 
-                            foreach (SchemaCompletion completion in completions)
+                foreach (SchemaCompletion completion in completions)
                 {
                     // Skip keys that already exist
                     if (existingKeys.Contains(completion.Key))
@@ -170,14 +224,14 @@ namespace TomlEditor.Schema
                     string insertText = completion.Key;
 
                     var item = new CompletionItem(
-                        displayText, 
-                        this, 
-                        icon, 
-                        ImmutableArray<CompletionFilter>.Empty, 
-                        string.Empty, 
-                        insertText, 
-                        insertText, 
-                        insertText, 
+                        displayText,
+                        this,
+                        icon,
+                        ImmutableArray<CompletionFilter>.Empty,
+                        string.Empty,
+                        insertText,
+                        insertText,
+                        insertText,
                         ImmutableArray<ImageElement>.Empty);
 
                     item.Properties.AddProperty("Description", completion.Description ?? string.Empty);
@@ -258,10 +312,31 @@ namespace TomlEditor.Schema
                 }
             }
 
-            return keys;
-        }
+                return keys;
+            }
 
-        private CompletionContextInfo GetContextInfo(SnapshotPoint point, Document document)
+            private static HashSet<string> GetExistingTableNames(Document document)
+            {
+                var tables = new HashSet<string>();
+
+                if (document?.Model == null)
+                {
+                    return tables;
+                }
+
+                foreach (TableSyntaxBase table in document.Model.Tables)
+                {
+                    string tableName = table.Name?.ToString()?.Trim();
+                    if (!string.IsNullOrEmpty(tableName))
+                    {
+                        tables.Add(tableName);
+                    }
+                }
+
+                return tables;
+            }
+
+            private CompletionContextInfo GetContextInfo(SnapshotPoint point, Document document)
         {
             var info = new CompletionContextInfo();
 
@@ -269,6 +344,25 @@ namespace TomlEditor.Schema
             string lineText = line.GetText();
             int column = point.Position - line.Start.Position;
             string textBeforeCaret = column > 0 ? lineText.Substring(0, column) : string.Empty;
+
+            // Check if we're inside a table header [table] or [[array]]
+            string trimmed = textBeforeCaret.TrimStart();
+            if (trimmed.StartsWith("[[") || trimmed.StartsWith("["))
+            {
+                info.IsTableHeader = true;
+
+                // Extract the partial table name typed so far
+                int bracketStart = textBeforeCaret.LastIndexOf('[');
+                int tableNameStart = bracketStart + 1;
+                if (bracketStart + 1 < textBeforeCaret.Length && textBeforeCaret[bracketStart + 1] == '[')
+                {
+                    tableNameStart = bracketStart + 2;
+                    info.IsArrayTable = true;
+                }
+
+                info.PartialTableName = textBeforeCaret.Substring(tableNameStart).Trim();
+                return info;
+            }
 
             // Check if we're in value position (after '=')
             int equalsIndex = textBeforeCaret.IndexOf('=');
@@ -316,11 +410,14 @@ namespace TomlEditor.Schema
             return char.IsLetterOrDigit(c) || c == '_' || c == '-' || c == '.';
         }
 
-        private class CompletionContextInfo
-        {
-            public string TablePath { get; set; } = string.Empty;
-            public string CurrentKey { get; set; } = string.Empty;
-            public bool IsValuePosition { get; set; }
+                private class CompletionContextInfo
+                {
+                    public string TablePath { get; set; } = string.Empty;
+                    public string CurrentKey { get; set; } = string.Empty;
+                    public bool IsValuePosition { get; set; }
+                    public bool IsTableHeader { get; set; }
+                    public bool IsArrayTable { get; set; }
+                    public string PartialTableName { get; set; } = string.Empty;
+                }
+            }
         }
-    }
-}

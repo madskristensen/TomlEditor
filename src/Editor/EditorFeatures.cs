@@ -69,7 +69,7 @@ namespace TomlEditor
     [ContentType(Constants.LanguageName)]
     internal sealed class CompletionCommitManager : CompletionCommitManagerBase
     {
-        public override IEnumerable<char> CommitChars => new char[] { '\t', ' ', '\'', '"', ',', '.', ';', ':', '\\', '$', '=', '\n' };
+        public override IEnumerable<char> CommitChars => new char[] { '\t', ' ', '\'', '"', ',', '.', ';', ':', '\\', '$', '=', '\n', '[' };
     }
 
     [Export(typeof(IViewTaggerProvider))]
