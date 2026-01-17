@@ -40,7 +40,7 @@ Full colorization support for all TOML elements including keys, strings, numbers
 
 Errors are detected and underlined as you type. Hover over any error to see a detailed message explaining the issue. Errors also appear in the Error List window for easy navigation.
 
-<!-- ![Validation](art/validation.png) -->
+![Validation](art/validation.png)
 
 ### Navigation Bar
 
@@ -51,8 +51,6 @@ Use the dropdown menus at the top of the editor to quickly jump between tables a
 ### Code Outlining
 
 Collapse and expand table sections to focus on what matters. Click the minus icon in the margin or use `Ctrl+M, Ctrl+M` to toggle outlining.
-
-<!-- ![Code Outlining](art/outlining.png) -->
 
 ### Commenting
 
@@ -113,13 +111,13 @@ Press `Ctrl+Space` to see available keys, tables, and values at the current posi
 - **Array of tables** with `[[double brackets]]`
 - **Enum values** when a property has a fixed set of allowed values
 
-<!-- ![IntelliSense](art/intellisense.png) -->
+![IntelliSense](art/intellisense.png)
 
 ### QuickInfo
 
 Hover over any key to see its description, type, and whether it's required. For enum properties, you'll also see the list of allowed values.
 
-<!-- ![QuickInfo](art/quickinfo.png) -->
+![Quick Info](art/quick-info.png)
 
 ### Schema Validation
 

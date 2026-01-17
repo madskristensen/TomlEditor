@@ -9,6 +9,22 @@
     {
       "pathOnDisk": "art/screenshot.png",
       "targetPath": "art/screenshot.png"
+    },
+    {
+      "pathOnDisk": "art/validation.png",
+      "targetPath": "art/validation.png"
+    },
+    {
+      "pathOnDisk": "art/dropdowns.png",
+      "targetPath": "art/dropdowns.png"
+    },
+    {
+      "pathOnDisk": "art/intellisense.png",
+      "targetPath": "art/intellisense.png"
+    },
+    {
+      "pathOnDisk": "art/quick-info.png",
+      "targetPath": "art/quick-info.png"
     }
   ],
   "overview": "README.md",
