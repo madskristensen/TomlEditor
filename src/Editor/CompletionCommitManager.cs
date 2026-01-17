@@ -7,11 +7,13 @@ namespace TomlEditor
 {
     /// <summary>
     /// Manages which characters trigger completion commits for TOML files.
+    /// Note: '=' is intentionally excluded so it types naturally without committing key completion.
     /// </summary>
     [Export(typeof(IAsyncCompletionCommitManagerProvider))]
     [ContentType(Constants.LanguageName)]
     internal sealed class CompletionCommitManager : CompletionCommitManagerBase
     {
-        public override IEnumerable<char> CommitChars => ['\t', ' ', '\'', '"', ',', '.', ';', ':', '\\', '$', '=', '\n', '['];
+        // '=' is NOT included - let it type naturally, then user presses Ctrl+Space for value completion
+        public override IEnumerable<char> CommitChars => ['\t', ' ', '\'', '"', ',', '.', ';', ':', '\\', '$', '\n', '['];
     }
 }

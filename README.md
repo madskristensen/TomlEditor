@@ -24,6 +24,7 @@
 ✅ **Brace Matching** — Highlights matching brackets and quotes  
 ✅ **JSON Schema Support** — Validation and IntelliSense powered by JSON Schema  
 ✅ **Go to Definition** — Navigate to schema definitions with `F12`  
+✅ **Find All References** — Find all occurrences of a key with `Shift+F12`  
 ✅ **Lightweight & Fast** — Designed for performance with zero impact on your workflow
 
 Whether you're working with Cargo.toml, pyproject.toml, or any other TOML configuration, this extension makes editing a breeze.
@@ -67,6 +68,10 @@ When you press Enter after a table header like `[section]`, the cursor automatic
 ### Brace Matching
 
 Matching brackets `[]`, `[[]]`, and quotes are highlighted when your cursor is adjacent to them, making it easy to see matching pairs.
+
+### Find All References
+
+Place your cursor on any TOML key and press `Shift+F12` (or right-click and select "Find All References") to see all occurrences of that key in the document. Results appear in the Output window with line numbers for easy navigation. This works for both root-level keys and keys within tables.
 
 ---
 

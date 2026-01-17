@@ -39,6 +39,7 @@ namespace TomlEditor
             await Commenting.InitializeAsync();
             await Formatting.InitializeAsync();
             await GoToDefinitionCommand.InitializeAsync();
+            await FindAllReferencesCommand.InitializeAsync();
         }
     }
 }

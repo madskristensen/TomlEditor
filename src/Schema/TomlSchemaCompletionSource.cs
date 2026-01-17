@@ -203,7 +203,11 @@ namespace TomlEditor.Schema
                     {
                         foreach (var value in propInfo.EnumValues)
                         {
-                            var displayText = $"\"{value}\"";
+                            // For numeric types, don't wrap in quotes
+                            var displayText = IsNumericType(propInfo.Type)
+                                ? value
+                                : $"\"{value}\"";
+
                             items.Add(new CompletionItem(displayText, this, _valueIcon));
                         }
                     }
@@ -463,6 +467,16 @@ namespace TomlEditor.Schema
         private static bool IsKeyChar(char c)
         {
             return char.IsLetterOrDigit(c) || c == '_' || c == '-' || c == '.';
+        }
+
+        private static bool IsNumericType(string type)
+        {
+            if (string.IsNullOrEmpty(type))
+            {
+                return false;
+            }
+
+            return type == "integer" || type == "number" || type == "float" || type == "double";
         }
 
         private class CompletionContextInfo
