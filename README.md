@@ -22,7 +22,8 @@
 ✅ **Smart Indentation** — Automatic indentation when pressing Enter  
 ✅ **Brace Matching** — Highlights matching brackets and quotes  
 ✅ **JSON Schema Support** — Validation and IntelliSense powered by JSON Schema  
-✅ **Lightweight & Fast** — Designed for performance with zero impact on your workflow  
+✅ **Go to Definition** — Navigate to schema definitions with `F12`  
+✅ **Lightweight & Fast** — Designed for performance with zero impact on your workflow
 
 Whether you're working with Cargo.toml, pyproject.toml, or any other TOML configuration, this extension makes editing a breeze.
 
@@ -62,6 +63,7 @@ You can use:
 - **Validation** — Errors and warnings when your TOML doesn't match the schema
 - **IntelliSense** — Autocomplete for keys and enum values (`Ctrl+Space`)
 - **QuickInfo** — Hover over keys to see descriptions, types, and allowed values
+- **Go to Definition** — Press `F12` on any key to open the schema and navigate to its definition
 
 ## Getting Started
 

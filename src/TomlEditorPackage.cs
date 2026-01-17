@@ -15,14 +15,14 @@ namespace TomlEditor
     [InstalledProductRegistration(Vsix.Name, Vsix.Description, Vsix.Version)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [Guid(PackageGuids.TomlEditorString)]
-    [ProvideOptionPage(typeof(OptionsProvider.AdvancedOptionsPage), "TomlEditor", "Advanced", 0, 0, true, SupportsProfiles = true, NoShowAllView = true)]
+    //[ProvideOptionPage(typeof(OptionsProvider.AdvancedOptionsPage), Vsix.Name, "Advanced", 0, 0, true, SupportsProfiles = true)]
 
-    [ProvideLanguageService(typeof(LanguageFactory), Constants.LanguageName, 0, ShowHotURLs = false, DefaultToNonHotURLs = true, EnableLineNumbers = true, EnableAsyncCompletion = true, ShowCompletion = true, ShowDropDownOptions = true, MatchBraces = true, MatchBracesAtCaret = true)]
-    [ProvideLanguageExtension(typeof(LanguageFactory), Constants.FileExtension)]
+    [ProvideLanguageService(typeof(TomLanguage), Constants.LanguageName, 0, ShowHotURLs = false, DefaultToNonHotURLs = true, EnableLineNumbers = true, EnableAsyncCompletion = true, ShowCompletion = true, ShowDropDownOptions = true, MatchBraces = true, MatchBracesAtCaret = true)]
+    [ProvideLanguageExtension(typeof(TomLanguage), Constants.FileExtension)]
 
-    [ProvideEditorFactory(typeof(LanguageFactory), 214, false, CommonPhysicalViewAttributes = (int)__VSPHYSICALVIEWATTRIBUTES.PVA_SupportsPreview, TrustLevel = __VSEDITORTRUSTLEVEL.ETL_AlwaysTrusted)]
-    [ProvideEditorLogicalView(typeof(LanguageFactory), VSConstants.LOGVIEWID.TextView_string, IsTrusted = true)]
-    [ProvideEditorExtension(typeof(LanguageFactory), Constants.FileExtension, 65536, NameResourceID = 214)]
+    [ProvideEditorFactory(typeof(TomLanguage), 0, false, CommonPhysicalViewAttributes = (int)__VSPHYSICALVIEWATTRIBUTES.PVA_SupportsPreview, TrustLevel = __VSEDITORTRUSTLEVEL.ETL_AlwaysTrusted)]
+    [ProvideEditorLogicalView(typeof(TomLanguage), VSConstants.LOGVIEWID.TextView_string, IsTrusted = true)]
+    [ProvideEditorExtension(typeof(TomLanguage), Constants.FileExtension, 65536)]
 
     [ProvideFileIcon(Constants.FileExtension, "d40a88fd-d311-40db-9df5-63680d49f8d3:0")]
     [ProvideBindingPath()]
@@ -32,13 +32,13 @@ namespace TomlEditor
         {
             await JoinableTaskFactory.SwitchToMainThreadAsync();
 
-            LanguageFactory language = new(this);
+            TomLanguage language = new(this);
             RegisterEditorFactory(language);
-            ((IServiceContainer)this).AddService(typeof(LanguageFactory), language, true);
+            ((IServiceContainer)this).AddService(typeof(TomLanguage), language, true);
 
-                        await Commenting.InitializeAsync();
-                        await Formatting.InitializeAsync();
-                        await GoToDefinitionCommand.InitializeAsync();
-                    }
-                }
-            }
+            await Commenting.InitializeAsync();
+            await Formatting.InitializeAsync();
+            await GoToDefinitionCommand.InitializeAsync();
+        }
+    }
+}

@@ -6,12 +6,9 @@ namespace TomlEditor
 {
     [ComVisible(true)]
     [Guid(PackageGuids.EditorFactoryString)]
-    internal sealed class LanguageFactory : LanguageBase
+    internal sealed class TomLanguage(object site) : LanguageBase(site)
     {
         private DropdownBars _dropdownBars;
-
-        public LanguageFactory(object site) : base(site)
-        { }
 
         public override string Name => Constants.LanguageName;
 
@@ -40,6 +37,7 @@ namespace TomlEditor
             preferences.AutoListMembers = true;
             preferences.EnableQuickInfo = true;
             preferences.ParameterInformation = true;
+            preferences.EnableAsyncCompletion = true;
         }
 
         public override TypeAndMemberDropdownBars CreateDropDownHelper(IVsTextView textView)

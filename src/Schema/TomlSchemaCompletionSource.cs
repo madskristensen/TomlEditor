@@ -91,18 +91,23 @@ namespace TomlEditor.Schema
                     new SnapshotSpan(triggerLocation.Snapshot, valueStart, afterEquals.Length));
             }
 
-            // Key completion - find the start of the current word
-            int wordStart = column;
+                // Key completion - find the start of the current word
+                int wordStart = column;
 
-            while (wordStart > 0 && IsKeyChar(lineText[wordStart - 1]))
-            {
-                wordStart--;
+                while (wordStart > 0 && IsKeyChar(lineText[wordStart - 1]))
+                {
+                    wordStart--;
+                }
+
+                // Create applicable span - from word start to caret position
+                // This can be a zero-length span for invocation on blank line, which is valid
+                SnapshotSpan applicableSpan = new SnapshotSpan(line.Start + wordStart, triggerLocation);
+
+                // Always provide completions for key position (both for typing and Ctrl+Space invocation)
+                return new CompletionStartData(
+                    CompletionParticipation.ProvidesItems,
+                    applicableSpan);
             }
-
-            return new CompletionStartData(
-                CompletionParticipation.ProvidesItems,
-                new SnapshotSpan(line.Start + wordStart, triggerLocation));
-        }
 
         public async Task<CompletionContext> GetCompletionContextAsync(
             IAsyncCompletionSession session,

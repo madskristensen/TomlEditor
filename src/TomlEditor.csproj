@@ -61,7 +61,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Schema\SchemaQuickInfoSource.cs" />
     <Compile Include="Schema\SchemaValidationTagger.cs" />
-    <Compile Include="Schema\TomlCompletionCommitManager.cs" />
     <Compile Include="Schema\TomlSchemaCompletionSource.cs" />
     <Compile Include="Schema\TomlSchemaService.cs" />
     <Compile Include="TomlEditorPackage.cs" />
