@@ -45,6 +45,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Commands\CommandHelper.cs" />
     <Compile Include="Commands\Commenting.cs" />
     <Compile Include="Commands\Formatting.cs" />
     <Compile Include="Commands\GoToDefinitionCommand.cs" />
@@ -52,15 +53,28 @@
     <Compile Include="Commands\ToggleComment.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Document.cs" />
+    <Compile Include="Editor\BraceCompletion.cs" />
+    <Compile Include="Editor\BraceMatchingTaggerProvider.cs" />
+    <Compile Include="Editor\CompletionCommitManager.cs" />
     <Compile Include="Editor\DropdownBars.cs" />
-    <Compile Include="Editor\EditorFeatures.cs" />
+    <Compile Include="Editor\ErrorSquigglies.cs" />
     <Compile Include="Editor\LanguageFactory.cs" />
+    <Compile Include="Editor\Outlining.cs" />
+    <Compile Include="Editor\SameWordHighlighter.cs" />
+    <Compile Include="Editor\SyntaxHighlighting.cs" />
     <Compile Include="Editor\TokenTagger.cs" />
+    <Compile Include="Editor\Tooltips.cs" />
+    <Compile Include="Editor\UserRatings.cs" />
     <Compile Include="ExtensionMethods.cs" />
     <Compile Include="Options\Advanced.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Schema\CompletionElementProvider.cs" />
+    <Compile Include="Schema\SchemaCompletion.cs" />
+    <Compile Include="Schema\SchemaNavigationInfo.cs" />
+    <Compile Include="Schema\SchemaPropertyInfo.cs" />
     <Compile Include="Schema\SchemaQuickInfoSource.cs" />
+    <Compile Include="Schema\SchemaStoreCatalogEntry.cs" />
+    <Compile Include="Schema\SchemaValidationError.cs" />
     <Compile Include="Schema\SchemaValidationTagger.cs" />
     <Compile Include="Schema\TomlSchemaCompletionSource.cs" />
     <Compile Include="Schema\TomlSchemaService.cs" />

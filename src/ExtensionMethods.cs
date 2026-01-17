@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.Text;
+using Microsoft.VisualStudio.Text;
 using Tomlyn.Syntax;
 
 namespace TomlEditor
@@ -14,5 +14,27 @@ namespace TomlEditor
         {
             return buffer.Properties.GetOrCreateSingletonProperty(() => new Document(buffer));
         }
+
+        /// <summary>
+        /// Checks if a position falls within a given source span.
+        /// </summary>
+        public static bool ContainsPosition(this SourceSpan span, int position)
+        {
+            return position >= span.Start.Offset && position <= span.End.Offset;
+        }
+
+        /// <summary>
+        /// Checks if a position falls within a given nullable source span.
+        /// </summary>
+        public static bool ContainsPosition(this SourceSpan? span, int position)
+        {
+            if (!span.HasValue)
+            {
+                return false;
+            }
+
+            return span.Value.ContainsPosition(position);
+        }
     }
 }
+

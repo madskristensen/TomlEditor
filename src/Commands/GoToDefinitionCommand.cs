@@ -95,72 +95,65 @@ namespace TomlEditor.Commands
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// Finds the full property path for the TOML key at the specified position.
-        /// </summary>
-        private static string FindPropertyPathAtPosition(int position, Document document)
-        {
-            // Check root-level key-value pairs
-            foreach (KeyValueSyntax kvp in document.Model.KeyValues)
-            {
-                if (IsPositionInSpan(position, kvp.Key?.Span))
-                {
-                    return kvp.Key.ToString()?.Trim();
                 }
 
-                // Also check if cursor is on the value
-                if (IsPositionInSpan(position, kvp.Value?.Span))
-                {
-                    return kvp.Key.ToString()?.Trim();
-                }
-            }
-
-            // Check tables
-            string currentTablePath = string.Empty;
-
-            foreach (TableSyntaxBase table in document.Model.Tables)
-            {
-                if (table.Span.Start.Offset > position)
-                {
-                    break;
-                }
-
-                currentTablePath = table.Name?.ToString()?.Trim() ?? string.Empty;
-
-                // Check table name hover
-                if (IsPositionInSpan(position, table.Name?.Span))
-                {
-                    return currentTablePath;
-                }
-
-                foreach (SyntaxNode item in table.Items)
-                {
-                    if (item is KeyValueSyntax kvp)
-                    {
-                        if (IsPositionInSpan(position, kvp.Key?.Span) || IsPositionInSpan(position, kvp.Value?.Span))
+                        /// <summary>
+                        /// Finds the full property path for the TOML key at the specified position.
+                        /// </summary>
+                        private static string FindPropertyPathAtPosition(int position, Document document)
                         {
-                            string keyName = kvp.Key.ToString()?.Trim();
-                            return string.IsNullOrEmpty(currentTablePath)
-                                ? keyName
-                                : $"{currentTablePath}.{keyName}";
+                            // Check root-level key-value pairs
+                            foreach (KeyValueSyntax kvp in document.Model.KeyValues)
+                            {
+                                if (kvp.Key != null && kvp.Key.Span.ContainsPosition(position))
+                                {
+                                    return kvp.Key.ToString()?.Trim();
+                                }
+
+                                // Also check if cursor is on the value
+                                if (kvp.Value != null && kvp.Value.Span.ContainsPosition(position))
+                                {
+                                    return kvp.Key.ToString()?.Trim();
+                                }
+                            }
+
+                            // Check tables
+                            string currentTablePath = string.Empty;
+
+                            foreach (TableSyntaxBase table in document.Model.Tables)
+                            {
+                                if (table.Span.Start.Offset > position)
+                                {
+                                    break;
+                                }
+
+                                currentTablePath = table.Name?.ToString()?.Trim() ?? string.Empty;
+
+                                // Check table name hover
+                                if (table.Name != null && table.Name.Span.ContainsPosition(position))
+                                {
+                                    return currentTablePath;
+                                }
+
+                                foreach (SyntaxNode item in table.Items)
+                                {
+                                    if (item is KeyValueSyntax kvp)
+                                    {
+                                        bool keyMatch = kvp.Key != null && kvp.Key.Span.ContainsPosition(position);
+                                        bool valueMatch = kvp.Value != null && kvp.Value.Span.ContainsPosition(position);
+
+                                        if (keyMatch || valueMatch)
+                                        {
+                                            string keyName = kvp.Key.ToString()?.Trim();
+                                            return string.IsNullOrEmpty(currentTablePath)
+                                                ? keyName
+                                                : $"{currentTablePath}.{keyName}";
+                                        }
+                                    }
+                                }
+                            }
+
+                            return null;
                         }
                     }
                 }
-            }
-
-            return null;
-        }
-
-        private static bool IsPositionInSpan(int position, SourceSpan? span)
-        {
-            if (!span.HasValue)
-            {
-                return false;
-            }
-
-            return position >= span.Value.Start.Offset && position <= span.Value.End.Offset;
-        }
-    }
-}

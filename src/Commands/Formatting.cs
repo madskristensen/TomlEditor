@@ -5,6 +5,7 @@ using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Text;
 using Tomlyn;
 using Tomlyn.Syntax;
+using TomlEditor.Commands;
 
 namespace TomlEditor
 {
@@ -16,24 +17,8 @@ namespace TomlEditor
         public static async Task InitializeAsync()
         {
             // Intercept the formatting commands for TOML files
-            await VS.Commands.InterceptAsync(VSConstants.VSStd2KCmdID.FORMATDOCUMENT, () => Execute(FormatDocument));
-            await VS.Commands.InterceptAsync(VSConstants.VSStd2KCmdID.FORMATSELECTION, () => Execute(FormatSelection));
-        }
-
-        private static CommandProgression Execute(Action<DocumentView> action)
-        {
-            return ThreadHelper.JoinableTaskFactory.Run(async () =>
-            {
-                DocumentView doc = await VS.Documents.GetActiveDocumentViewAsync();
-
-                if (doc?.TextBuffer != null && doc.TextBuffer.ContentType.IsOfType(Constants.LanguageName))
-                {
-                    action(doc);
-                    return CommandProgression.Stop;
-                }
-
-                return CommandProgression.Continue;
-            });
+            await VS.Commands.InterceptAsync(VSConstants.VSStd2KCmdID.FORMATDOCUMENT, () => CommandHelper.ExecuteOnTomlDocument(FormatDocument));
+            await VS.Commands.InterceptAsync(VSConstants.VSStd2KCmdID.FORMATSELECTION, () => CommandHelper.ExecuteOnTomlDocument(FormatSelection));
         }
 
         private static void FormatDocument(DocumentView doc)

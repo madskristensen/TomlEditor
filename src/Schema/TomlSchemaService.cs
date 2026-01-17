@@ -782,79 +782,14 @@ namespace TomlEditor.Schema
                 case NJsonSchema.Validation.ValidationErrorKind.BooleanExpected:
                     return "Expected a boolean value (true/false)";
                 case NJsonSchema.Validation.ValidationErrorKind.ArrayExpected:
-                    return "Expected an array value";
-                case NJsonSchema.Validation.ValidationErrorKind.ObjectExpected:
-                    return "Expected an object/table value";
-                case NJsonSchema.Validation.ValidationErrorKind.NotInEnumeration:
-                    return $"Value is not one of the allowed values";
-                default:
-                    return message;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Represents a schema validation error with path information.
-    /// </summary>
-    public class SchemaValidationError
-    {
-        public string Path { get; set; }
-        public string Property { get; set; }
-        public string Message { get; set; }
-        public NJsonSchema.Validation.ValidationErrorKind Kind { get; set; }
-    }
-
-    /// <summary>
-    /// Represents navigation information to a schema definition.
-    /// </summary>
-    public class SchemaNavigationInfo
-    {
-        public string FilePath { get; set; }
-        public int LineNumber { get; set; }
-        public string PropertyPath { get; set; }
-    }
-
-    /// <summary>
-    /// Represents information about a schema property for QuickInfo tooltips.
-    /// </summary>
-    public class SchemaPropertyInfo
-    {
-        public string Name { get; set; }
-        public string Path { get; set; }
-        public string Description { get; set; }
-        public string Type { get; set; }
-                public bool IsDeprecated { get; set; }
-                public bool IsRequired { get; set; }
-                public string Default { get; set; }
-                public string[] EnumValues { get; set; }
-            }
-
-            /// <summary>
-            /// Represents a completion item from the schema.
-            /// </summary>
-            public class SchemaCompletion
-            {
-                public string Key { get; set; }
-                public string Description { get; set; }
-                public string Type { get; set; }
-                public bool IsDeprecated { get; set; }
-            }
-
-            /// <summary>
-            /// Represents an entry in the SchemaStore.org catalog.
-            /// </summary>
-            internal class SchemaStoreCatalogEntry
-            {
-                [JsonProperty("name")]
-                public string Name { get; set; }
-
-                [JsonProperty("description")]
-                public string Description { get; set; }
-
-                [JsonProperty("url")]
-                public string Url { get; set; }
-
-                [JsonProperty("fileMatch")]
-                public string[] FileMatch { get; set; }
-            }
-        }
+                                        return "Expected an array value";
+                                    case NJsonSchema.Validation.ValidationErrorKind.ObjectExpected:
+                                        return "Expected an object/table value";
+                                    case NJsonSchema.Validation.ValidationErrorKind.NotInEnumeration:
+                                        return $"Value is not one of the allowed values";
+                                    default:
+                                        return message;
+                                }
+                            }
+                        }
+                    }

@@ -72,92 +72,82 @@ namespace TomlEditor.Schema
             }
 
             // Build the tooltip content
-            object content = BuildTooltipContent(propertyInfo);
-            ITrackingSpan applicableSpan = _buffer.CurrentSnapshot.CreateTrackingSpan(
-                keyInfo.Span,
-                SpanTrackingMode.EdgeInclusive);
+                object content = BuildTooltipContent(propertyInfo);
+                ITrackingSpan applicableSpan = _buffer.CurrentSnapshot.CreateTrackingSpan(
+                    keyInfo.Span,
+                    SpanTrackingMode.EdgeInclusive);
 
-            return new QuickInfoItem(applicableSpan, content);
-        }
-
-        private static KeyInfo FindKeyAtPosition(SnapshotPoint point, Document document)
-        {
-            int position = point.Position;
-
-            // Check root-level key-value pairs
-            foreach (KeyValueSyntax kvp in document.Model.KeyValues)
-            {
-                if (IsPositionInSpan(position, kvp.Key?.Span))
-                {
-                    string keyName = kvp.Key.ToString()?.Trim();
-                    return new KeyInfo
-                    {
-                        KeyName = keyName,
-                        FullPath = keyName,
-                        Span = kvp.Key.Span.ToSpan()
-                    };
-                }
-            }
-
-            // Check tables
-            string currentTablePath = string.Empty;
-
-            foreach (TableSyntaxBase table in document.Model.Tables)
-            {
-                if (table.Span.Start.Offset > position)
-                {
-                    break;
+                    return new QuickInfoItem(applicableSpan, content);
                 }
 
-                currentTablePath = table.Name?.ToString()?.Trim() ?? string.Empty;
-
-                // Check table name hover
-                if (IsPositionInSpan(position, table.Name?.Span))
+                private static KeyInfo FindKeyAtPosition(SnapshotPoint point, Document document)
                 {
-                    return new KeyInfo
-                    {
-                        KeyName = currentTablePath,
-                        FullPath = currentTablePath,
-                        Span = table.Name.Span.ToSpan()
-                    };
-                }
+                    int position = point.Position;
 
-                foreach (SyntaxNode item in table.Items)
-                {
-                    if (item is KeyValueSyntax kvp && IsPositionInSpan(position, kvp.Key?.Span))
+                    // Check root-level key-value pairs
+                    foreach (KeyValueSyntax kvp in document.Model.KeyValues)
                     {
-                        string keyName = kvp.Key.ToString()?.Trim();
-
-                        return new KeyInfo
+                        if (kvp.Key != null && kvp.Key.Span.ContainsPosition(position))
                         {
-                            KeyName = keyName,
-                            FullPath = string.IsNullOrEmpty(currentTablePath)
-                                ? keyName
-                                : $"{currentTablePath}.{keyName}",
-                            Span = kvp.Key.Span.ToSpan()
-                        };
+                            string keyName = kvp.Key.ToString()?.Trim();
+                            return new KeyInfo
+                            {
+                                KeyName = keyName,
+                                FullPath = keyName,
+                                Span = kvp.Key.Span.ToSpan()
+                            };
+                        }
                     }
+
+                    // Check tables
+                    string currentTablePath = string.Empty;
+
+                    foreach (TableSyntaxBase table in document.Model.Tables)
+                    {
+                        if (table.Span.Start.Offset > position)
+                        {
+                            break;
+                        }
+
+                        currentTablePath = table.Name?.ToString()?.Trim() ?? string.Empty;
+
+                        // Check table name hover
+                        if (table.Name != null && table.Name.Span.ContainsPosition(position))
+                        {
+                            return new KeyInfo
+                            {
+                                KeyName = currentTablePath,
+                                FullPath = currentTablePath,
+                                Span = table.Name.Span.ToSpan()
+                            };
+                        }
+
+                        foreach (SyntaxNode item in table.Items)
+                        {
+                            if (item is KeyValueSyntax kvp && kvp.Key != null && kvp.Key.Span.ContainsPosition(position))
+                            {
+                                string keyName = kvp.Key.ToString()?.Trim();
+
+                                return new KeyInfo
+                                {
+                                    KeyName = keyName,
+                                    FullPath = string.IsNullOrEmpty(currentTablePath)
+                                        ? keyName
+                                        : $"{currentTablePath}.{keyName}",
+                                    Span = kvp.Key.Span.ToSpan()
+                                };
+                            }
+                        }
+                    }
+
+                    return null;
                 }
-            }
 
-            return null;
-        }
+                    private static object BuildTooltipContent(SchemaPropertyInfo property)
+                    {
+                        var elements = new List<object>();
 
-        private static bool IsPositionInSpan(int position, SourceSpan? span)
-        {
-            if (!span.HasValue)
-            {
-                return false;
-            }
-
-            return position >= span.Value.Start.Offset && position <= span.Value.End.Offset;
-        }
-
-                private static object BuildTooltipContent(SchemaPropertyInfo property)
-                {
-                    var elements = new List<object>();
-
-                    // Header: key name with type (styled like a declaration)
+                        // Header: key name with type (styled like a declaration)
                     var headerRuns = new List<ClassifiedTextRun>
                     {
                         new ClassifiedTextRun(PredefinedClassificationTypeNames.Identifier, property.Name)

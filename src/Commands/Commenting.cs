@@ -1,34 +1,22 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Linq;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Formatting;
+using TomlEditor.Commands;
 
 namespace TomlEditor
 {
+    /// <summary>
+    /// Handles Comment/Uncomment block commands for TOML files.
+    /// </summary>
     public class Commenting
     {
         public static async Task InitializeAsync()
         {
             // We need to manually intercept the commenting command, because language services swallow these commands.
-            await VS.Commands.InterceptAsync(VSConstants.VSStd2KCmdID.COMMENT_BLOCK, () => Execute(Comment));
-            await VS.Commands.InterceptAsync(VSConstants.VSStd2KCmdID.UNCOMMENT_BLOCK, () => Execute(Uncomment));
-        }
-
-        private static CommandProgression Execute(Action<DocumentView> action)
-        {
-            return ThreadHelper.JoinableTaskFactory.Run(async () =>
-            {
-                DocumentView doc = await VS.Documents.GetActiveDocumentViewAsync();
-
-                if (doc?.TextBuffer != null && doc.TextBuffer.ContentType.IsOfType(Constants.LanguageName))
-                {
-                    action(doc);
-                    return CommandProgression.Stop;
-                }
-
-                return CommandProgression.Continue;
-            });
+            await VS.Commands.InterceptAsync(VSConstants.VSStd2KCmdID.COMMENT_BLOCK, () => CommandHelper.ExecuteOnTomlDocument(Comment));
+            await VS.Commands.InterceptAsync(VSConstants.VSStd2KCmdID.UNCOMMENT_BLOCK, () => CommandHelper.ExecuteOnTomlDocument(Uncomment));
         }
 
         private static void Comment(DocumentView doc)
