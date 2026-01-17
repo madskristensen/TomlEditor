@@ -45,7 +45,7 @@ namespace TomlEditor
             // Make sure this is running on a background thread.
             ThreadHelper.ThrowIfOnUIThread();
 
-            List<ITagSpan<TokenTag>> list = new();
+            List<ITagSpan<TokenTag>> list = [];
 
             if (_document.Model != null)
             {
@@ -107,14 +107,14 @@ namespace TomlEditor
             foreach (DiagnosticMessage error in _document.Model.Diagnostics)
             {
                 // Create a span for the exact error location
-                Span errorSpan = error.Span.ToSpan();
+                var errorSpan = error.Span.ToSpan();
 
                 // If the error span is empty or invalid, try to highlight at least one character
                 if (errorSpan.Length == 0 && errorSpan.Start < Buffer.CurrentSnapshot.Length)
                 {
                     // Extend to end of line or at least one character
                     ITextSnapshotLine line = Buffer.CurrentSnapshot.GetLineFromPosition(errorSpan.Start);
-                    int endPos = Math.Min(line.End.Position, errorSpan.Start + 1);
+                    var endPos = Math.Min(line.End.Position, errorSpan.Start + 1);
                     errorSpan = new Span(errorSpan.Start, Math.Max(1, endPos - errorSpan.Start));
                 }
 
@@ -131,8 +131,8 @@ namespace TomlEditor
 
                 SnapshotSpan snapshotSpan = new(Buffer.CurrentSnapshot, errorSpan);
                 TokenTag errorTag = CreateToken(TokenKind.Invalid, false, false, null);
-                errorTag.Errors = new[]
-                {
+                errorTag.Errors =
+                [
                     new ErrorListItem
                     {
                         ProjectName = "",
@@ -144,7 +144,7 @@ namespace TomlEditor
                         Column = error.Span.Start.Column,
                         BuildTool = Vsix.Name,
                     }
-                };
+                ];
 
                 list.Add(new TagSpan<TokenTag>(snapshotSpan, errorTag));
             }

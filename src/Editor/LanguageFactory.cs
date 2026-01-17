@@ -12,7 +12,7 @@ namespace TomlEditor
 
         public override string Name => Constants.LanguageName;
 
-        public override string[] FileExtensions { get; } = new[] { Constants.FileExtension };
+        public override string[] FileExtensions { get; } = [Constants.FileExtension];
 
         public override void SetDefaultPreferences(LanguagePreferences preferences)
         {

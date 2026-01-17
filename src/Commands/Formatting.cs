@@ -86,15 +86,15 @@ namespace TomlEditor
         /// </summary>
         private static string FormatLines(string text)
         {
-            var lines = text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            var lines = text.Split(["\r\n", "\r", "\n"], StringSplitOptions.None);
             var formatted = new StringBuilder();
             var keyValuePattern = new Regex(@"^(\s*)([^#=\[\]]+?)\s*=\s*(.*)$");
             var tablePattern = new Regex(@"^\s*\[([^\[\]]+)\]\s*$");
             var arrayTablePattern = new Regex(@"^\s*\[\[([^\[\]]+)\]\]\s*$");
 
-            string currentTablePath = string.Empty;
-            int currentIndentLevel = 0;
-            string indentUnit = "  "; // 2 spaces per level
+            var currentTablePath = string.Empty;
+            var currentIndentLevel = 0;
+            var indentUnit = "  "; // 2 spaces per level
 
             for (var i = 0; i < lines.Length; i++)
             {
@@ -106,10 +106,10 @@ namespace TomlEditor
                 Match arrayTableMatch = arrayTablePattern.Match(trimmed);
                 if (arrayTableMatch.Success)
                 {
-                    string tablePath = arrayTableMatch.Groups[1].Value.Trim();
-                    int indentLevel = GetTableIndentLevel(tablePath, ref currentTablePath);
+                    var tablePath = arrayTableMatch.Groups[1].Value.Trim();
+                    var indentLevel = GetTableIndentLevel(tablePath, ref currentTablePath);
                     currentIndentLevel = indentLevel;
-                    string indent = new string(' ', indentLevel * indentUnit.Length);
+                    var indent = new string(' ', indentLevel * indentUnit.Length);
 
                     // Add blank line before table if not at start and previous line is not blank
                     if (formatted.Length > 0 && !EndsWithBlankLine(formatted))
@@ -122,10 +122,10 @@ namespace TomlEditor
                 // Check for table header [table]
                 else if (tablePattern.Match(trimmed) is Match tableMatch && tableMatch.Success)
                 {
-                    string tablePath = tableMatch.Groups[1].Value.Trim();
-                    int indentLevel = GetTableIndentLevel(tablePath, ref currentTablePath);
+                    var tablePath = tableMatch.Groups[1].Value.Trim();
+                    var indentLevel = GetTableIndentLevel(tablePath, ref currentTablePath);
                     currentIndentLevel = indentLevel;
-                    string indent = new string(' ', indentLevel * indentUnit.Length);
+                    var indent = new string(' ', indentLevel * indentUnit.Length);
 
                     // Add blank line before table if not at start and previous line is not blank
                     if (formatted.Length > 0 && !EndsWithBlankLine(formatted))
@@ -140,14 +140,14 @@ namespace TomlEditor
                 {
                     var key = kvMatch.Groups[2].Value.Trim();
                     var value = kvMatch.Groups[3].Value;
-                    string indent = new string(' ', (currentIndentLevel + 1) * indentUnit.Length);
+                    var indent = new string(' ', (currentIndentLevel + 1) * indentUnit.Length);
 
                     trimmed = $"{indent}{key} = {value}";
                 }
                 // Preserve comments and blank lines with appropriate indentation
                 else if (trimmedStart.StartsWith("#"))
                 {
-                    string indent = new string(' ', (currentIndentLevel + 1) * indentUnit.Length);
+                    var indent = new string(' ', (currentIndentLevel + 1) * indentUnit.Length);
                     trimmed = $"{indent}{trimmedStart}";
                 }
                 // Blank lines - keep as is
@@ -178,22 +178,22 @@ namespace TomlEditor
                 tablePath.StartsWith(currentTablePath + ".", StringComparison.Ordinal))
             {
                 // Count the dots to determine nesting level relative to root
-                int dots = tablePath.Count(c => c == '.');
+                var dots = tablePath.Count(c => c == '.');
                 currentTablePath = tablePath;
                 return dots;
             }
 
             // Check if this is a root table or starting a new hierarchy
-            int tableDots = tablePath.Count(c => c == '.');
+            var tableDots = tablePath.Count(c => c == '.');
 
             // Find the common parent level
             if (!string.IsNullOrEmpty(currentTablePath))
             {
-                string[] currentParts = currentTablePath.Split('.');
-                string[] newParts = tablePath.Split('.');
+                var currentParts = currentTablePath.Split('.');
+                var newParts = tablePath.Split('.');
 
-                int commonDepth = 0;
-                for (int j = 0; j < Math.Min(currentParts.Length, newParts.Length); j++)
+                var commonDepth = 0;
+                for (var j = 0; j < Math.Min(currentParts.Length, newParts.Length); j++)
                 {
                     if (currentParts[j] == newParts[j])
                     {
@@ -229,7 +229,7 @@ namespace TomlEditor
             }
 
             // Check for \r\n\r\n or \n\n at the end
-            string str = sb.ToString();
+            var str = sb.ToString();
             return str.EndsWith("\r\n\r\n") || str.EndsWith("\n\n") || 
                    str.EndsWith("\r\n") && str.Length >= 4 && str[str.Length - 3] == '\n';
         }

@@ -11,7 +11,7 @@ namespace TomlEditor.Commands
     /// </summary>
     public class GoToDefinitionCommand
     {
-        private static readonly TomlSchemaService _schemaService = new TomlSchemaService();
+        private static readonly TomlSchemaService _schemaService = new();
 
         public static async Task InitializeAsync()
         {
@@ -36,8 +36,8 @@ namespace TomlEditor.Commands
                     return CommandProgression.Continue;
                 }
 
-                string documentText = doc.TextBuffer.CurrentSnapshot.GetText();
-                string fileName = document.FileName;
+                var documentText = doc.TextBuffer.CurrentSnapshot.GetText();
+                var fileName = document.FileName;
 
                 // Check if schema is available
                 if (!TomlSchemaService.HasSchema(documentText, fileName))
@@ -46,17 +46,17 @@ namespace TomlEditor.Commands
                 }
 
                 // Get caret position
-                int position = doc.TextView.Caret.Position.BufferPosition.Position;
+                var position = doc.TextView.Caret.Position.BufferPosition.Position;
 
                 // Find the property path at the cursor position
-                string propertyPath = FindPropertyPathAtPosition(position, document);
+                var propertyPath = FindPropertyPathAtPosition(position, document);
                 if (string.IsNullOrEmpty(propertyPath))
                 {
                     return CommandProgression.Continue;
                 }
 
                 // Navigate to schema definition
-                bool navigated = await NavigateToSchemaAsync(documentText, propertyPath, fileName);
+                var navigated = await NavigateToSchemaAsync(documentText, propertyPath, fileName);
 
                 return navigated ? CommandProgression.Stop : CommandProgression.Continue;
             });
@@ -82,7 +82,7 @@ namespace TomlEditor.Commands
             if (navInfo.LineNumber > 0)
             {
                 ITextSnapshot snapshot = schemaDoc.TextView.TextBuffer.CurrentSnapshot;
-                int targetLine = Math.Min(navInfo.LineNumber - 1, snapshot.LineCount - 1);
+                var targetLine = Math.Min(navInfo.LineNumber - 1, snapshot.LineCount - 1);
                 ITextSnapshotLine line = snapshot.GetLineFromLineNumber(targetLine);
 
                 // Move caret to the line
@@ -118,7 +118,7 @@ namespace TomlEditor.Commands
                             }
 
                             // Check tables
-                            string currentTablePath = string.Empty;
+                            var currentTablePath = string.Empty;
 
                             foreach (TableSyntaxBase table in document.Model.Tables)
                             {
@@ -139,12 +139,12 @@ namespace TomlEditor.Commands
                                 {
                                     if (item is KeyValueSyntax kvp)
                                     {
-                                        bool keyMatch = kvp.Key != null && kvp.Key.Span.ContainsPosition(position);
-                                        bool valueMatch = kvp.Value != null && kvp.Value.Span.ContainsPosition(position);
+                                        var keyMatch = kvp.Key != null && kvp.Key.Span.ContainsPosition(position);
+                                        var valueMatch = kvp.Value != null && kvp.Value.Span.ContainsPosition(position);
 
                                         if (keyMatch || valueMatch)
                                         {
-                                            string keyName = kvp.Key.ToString()?.Trim();
+                                            var keyName = kvp.Key.ToString()?.Trim();
                                             return string.IsNullOrEmpty(currentTablePath)
                                                 ? keyName
                                                 : $"{currentTablePath}.{keyName}";

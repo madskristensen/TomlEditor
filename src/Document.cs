@@ -12,7 +12,7 @@ namespace TomlEditor
         private static readonly TimeSpan ParseDelay = TimeSpan.FromMilliseconds(300);
 
         private readonly ITextBuffer _buffer;
-        private readonly object _parseLock = new object();
+        private readonly object _parseLock = new();
         private CancellationTokenSource _parseCts;
         private bool _isDisposed;
         private volatile bool _isParsing;
@@ -60,7 +60,7 @@ namespace TomlEditor
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var text = _buffer.CurrentSnapshot.GetText();
-                var model = Toml.Parse(text, FileName, TomlParserOptions.ParseAndValidate);
+                DocumentSyntax model = Toml.Parse(text, FileName, TomlParserOptions.ParseAndValidate);
 
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -77,7 +77,7 @@ namespace TomlEditor
 
                 if (success)
                 {
-                    var handler = Parsed;
+                    Action<Document> handler = Parsed;
                     handler?.Invoke(this);
                 }
             }

@@ -27,7 +27,7 @@ namespace TomlEditor.Schema
     internal sealed class SchemaQuickInfoSource : IAsyncQuickInfoSource
     {
         private readonly ITextBuffer _buffer;
-        private readonly TomlSchemaService _schemaService = new TomlSchemaService();
+        private readonly TomlSchemaService _schemaService = new();
 
         public SchemaQuickInfoSource(ITextBuffer buffer)
         {
@@ -45,7 +45,7 @@ namespace TomlEditor.Schema
                 return null;
             }
 
-            string documentText = _buffer.CurrentSnapshot.GetText();
+            var documentText = _buffer.CurrentSnapshot.GetText();
             Document document = _buffer.GetDocument();
 
             if (document?.Model == null)
@@ -53,7 +53,7 @@ namespace TomlEditor.Schema
                 return null;
             }
 
-            string fileName = document.FileName;
+            var fileName = document.FileName;
 
             // Find the key at the trigger point
             KeyInfo keyInfo = FindKeyAtPosition(triggerPoint.Value, document);
@@ -72,7 +72,7 @@ namespace TomlEditor.Schema
             }
 
             // Build the tooltip content
-                object content = BuildTooltipContent(propertyInfo);
+                var content = BuildTooltipContent(propertyInfo);
                 ITrackingSpan applicableSpan = _buffer.CurrentSnapshot.CreateTrackingSpan(
                     keyInfo.Span,
                     SpanTrackingMode.EdgeInclusive);
@@ -82,14 +82,14 @@ namespace TomlEditor.Schema
 
                 private static KeyInfo FindKeyAtPosition(SnapshotPoint point, Document document)
                 {
-                    int position = point.Position;
+                    var position = point.Position;
 
                     // Check root-level key-value pairs
                     foreach (KeyValueSyntax kvp in document.Model.KeyValues)
                     {
                         if (kvp.Key != null && kvp.Key.Span.ContainsPosition(position))
                         {
-                            string keyName = kvp.Key.ToString()?.Trim();
+                            var keyName = kvp.Key.ToString()?.Trim();
                             return new KeyInfo
                             {
                                 KeyName = keyName,
@@ -100,7 +100,7 @@ namespace TomlEditor.Schema
                     }
 
                     // Check tables
-                    string currentTablePath = string.Empty;
+                    var currentTablePath = string.Empty;
 
                     foreach (TableSyntaxBase table in document.Model.Tables)
                     {
@@ -126,7 +126,7 @@ namespace TomlEditor.Schema
                         {
                             if (item is KeyValueSyntax kvp && kvp.Key != null && kvp.Key.Span.ContainsPosition(position))
                             {
-                                string keyName = kvp.Key.ToString()?.Trim();
+                                var keyName = kvp.Key.ToString()?.Trim();
 
                                 return new KeyInfo
                                 {
@@ -150,7 +150,7 @@ namespace TomlEditor.Schema
                         // Header: key name with type (styled like a declaration)
                     var headerRuns = new List<ClassifiedTextRun>
                     {
-                        new ClassifiedTextRun(PredefinedClassificationTypeNames.Identifier, property.Name)
+                        new(PredefinedClassificationTypeNames.Identifier, property.Name)
                     };
 
                     if (!string.IsNullOrEmpty(property.Type))
@@ -165,7 +165,7 @@ namespace TomlEditor.Schema
                         headerRuns.Add(new ClassifiedTextRun(PredefinedClassificationTypeNames.Keyword, "(required)"));
                     }
 
-                    elements.Add(new ClassifiedTextElement(headerRuns.ToArray()));
+                    elements.Add(new ClassifiedTextElement([.. headerRuns]));
 
                     // Deprecated warning
                     if (property.IsDeprecated)
@@ -177,7 +177,7 @@ namespace TomlEditor.Schema
                     // Description - clean up markdown
                     if (!string.IsNullOrEmpty(property.Description))
                     {
-                        string cleanDescription = CleanMarkdown(property.Description);
+                        var cleanDescription = CleanMarkdown(property.Description);
                         if (!string.IsNullOrWhiteSpace(cleanDescription))
                         {
                             elements.Add(new ClassifiedTextElement(
@@ -188,9 +188,9 @@ namespace TomlEditor.Schema
                     // Enum values
                     if (property.EnumValues != null && property.EnumValues.Length > 0)
                     {
-                        int maxToShow = 10;
-                        var valuesToShow = property.EnumValues.Take(maxToShow);
-                        string enumList = string.Join(" | ", valuesToShow.Select(e => $"\"{e}\""));
+                        var maxToShow = 10;
+                IEnumerable<string> valuesToShow = property.EnumValues.Take(maxToShow);
+                        var enumList = string.Join(" | ", valuesToShow.Select(e => $"\"{e}\""));
 
                         if (property.EnumValues.Length > maxToShow)
                         {
@@ -199,11 +199,11 @@ namespace TomlEditor.Schema
 
                         var enumRuns = new List<ClassifiedTextRun>
                         {
-                            new ClassifiedTextRun(PredefinedClassificationTypeNames.Comment, "Allowed: "),
-                            new ClassifiedTextRun(PredefinedClassificationTypeNames.String, enumList)
+                            new(PredefinedClassificationTypeNames.Comment, "Allowed: "),
+                            new(PredefinedClassificationTypeNames.String, enumList)
                         };
 
-                        elements.Add(new ClassifiedTextElement(enumRuns.ToArray()));
+                        elements.Add(new ClassifiedTextElement([.. enumRuns]));
                     }
 
                     // Default value
@@ -211,11 +211,11 @@ namespace TomlEditor.Schema
                     {
                         var defaultRuns = new List<ClassifiedTextRun>
                         {
-                            new ClassifiedTextRun(PredefinedClassificationTypeNames.Comment, "Default: "),
-                            new ClassifiedTextRun(PredefinedClassificationTypeNames.String, property.Default)
+                            new(PredefinedClassificationTypeNames.Comment, "Default: "),
+                            new(PredefinedClassificationTypeNames.String, property.Default)
                         };
 
-                        elements.Add(new ClassifiedTextElement(defaultRuns.ToArray()));
+                        elements.Add(new ClassifiedTextElement([.. defaultRuns]));
                     }
 
                     return new ContainerElement(ContainerElementStyle.Stacked, elements);

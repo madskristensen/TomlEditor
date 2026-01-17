@@ -27,8 +27,8 @@ namespace TomlEditor.Schema
     {
         private readonly ITextBuffer _buffer;
         private readonly Document _document;
-        private readonly TomlSchemaService _schemaService = new TomlSchemaService();
-        private List<ITagSpan<IErrorTag>> _errorTags = new List<ITagSpan<IErrorTag>>();
+        private readonly TomlSchemaService _schemaService = new();
+        private List<ITagSpan<IErrorTag>> _errorTags = [];
         private bool _isDisposed;
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
@@ -53,8 +53,8 @@ namespace TomlEditor.Schema
         {
             var errors = new List<ITagSpan<IErrorTag>>();
             ITextSnapshot snapshot = _buffer.CurrentSnapshot;
-            string text = snapshot.GetText();
-            string fileName = _document?.FileName;
+            var text = snapshot.GetText();
+            var fileName = _document?.FileName;
 
             // Use NJsonSchema for validation (handles both directive and catalog matching)
             IList<SchemaValidationError> validationErrors = await _schemaService.ValidateAsync(text, fileName);
@@ -66,7 +66,7 @@ namespace TomlEditor.Schema
 
                 if (span.HasValue)
                 {
-                    string errorType = IsWarning(error.Kind) 
+                    var errorType = IsWarning(error.Kind) 
                         ? PredefinedErrorTypeNames.Warning 
                         : PredefinedErrorTypeNames.SyntaxError;
 
@@ -85,13 +85,13 @@ namespace TomlEditor.Schema
                 return null;
             }
 
-            string path = error.Path;
-            string property = error.Property;
+            var path = error.Path;
+            var property = error.Property;
 
             // If there's a specific property, try to find it
             if (!string.IsNullOrEmpty(property))
             {
-                string fullPath = string.IsNullOrEmpty(path) ? property : $"{path}.{property}";
+                var fullPath = string.IsNullOrEmpty(path) ? property : $"{path}.{property}";
                 SourceSpan? sourceSpan = FindKeySpan(fullPath);
 
                 if (sourceSpan.HasValue)
@@ -136,7 +136,7 @@ namespace TomlEditor.Schema
                 return null;
             }
 
-            string[] parts = path.Split('.');
+            var parts = path.Split('.');
 
             // Check root-level keys
             if (parts.Length == 1)
@@ -153,7 +153,7 @@ namespace TomlEditor.Schema
             // Check tables
             foreach (TableSyntaxBase table in _document.Model.Tables)
             {
-                string tableName = table.Name?.ToString()?.Trim() ?? string.Empty;
+                var tableName = table.Name?.ToString()?.Trim() ?? string.Empty;
 
                 // Check if the path starts with this table
                 if (path.StartsWith(tableName + ".") || path == tableName)
@@ -163,8 +163,8 @@ namespace TomlEditor.Schema
                         return table.Name?.Span;
                     }
 
-                    string remainder = path.Substring(tableName.Length + 1);
-                    string keyToFind = remainder.Split('.')[0];
+                    var remainder = path.Substring(tableName.Length + 1);
+                    var keyToFind = remainder.Split('.')[0];
 
                     foreach (SyntaxNode item in table.Items)
                     {
@@ -186,7 +186,7 @@ namespace TomlEditor.Schema
                 return null;
             }
 
-            string[] parts = path.Split('.');
+            var parts = path.Split('.');
 
             // Check root-level keys
             if (parts.Length == 1)
@@ -203,12 +203,12 @@ namespace TomlEditor.Schema
             // Check tables
             foreach (TableSyntaxBase table in _document.Model.Tables)
             {
-                string tableName = table.Name?.ToString()?.Trim() ?? string.Empty;
+                var tableName = table.Name?.ToString()?.Trim() ?? string.Empty;
 
                 if (path.StartsWith(tableName + "."))
                 {
-                    string remainder = path.Substring(tableName.Length + 1);
-                    string keyToFind = remainder.Split('.')[0];
+                    var remainder = path.Substring(tableName.Length + 1);
+                    var keyToFind = remainder.Split('.')[0];
 
                     foreach (SyntaxNode item in table.Items)
                     {
@@ -227,8 +227,8 @@ namespace TomlEditor.Schema
         {
             try
             {
-                int start = sourceSpan.Start.Offset;
-                int length = sourceSpan.End.Offset - start;
+                var start = sourceSpan.Start.Offset;
+                var length = sourceSpan.End.Offset - start;
 
                 if (start >= 0 && start + length <= snapshot.Length && length > 0)
                 {
