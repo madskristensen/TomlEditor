@@ -140,14 +140,14 @@ namespace TomlEditor
                 {
                     var key = kvMatch.Groups[2].Value.Trim();
                     var value = kvMatch.Groups[3].Value;
-                    var indent = new string(' ', (currentIndentLevel + 1) * indentUnit.Length);
+                    var indent = new string(' ', currentIndentLevel * indentUnit.Length);
 
                     trimmed = $"{indent}{key} = {value}";
                 }
                 // Preserve comments and blank lines with appropriate indentation
                 else if (trimmedStart.StartsWith("#"))
                 {
-                    var indent = new string(' ', (currentIndentLevel + 1) * indentUnit.Length);
+                    var indent = new string(' ', currentIndentLevel * indentUnit.Length);
                     trimmed = $"{indent}{trimmedStart}";
                 }
                 // Blank lines - keep as is

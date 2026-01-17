@@ -34,9 +34,9 @@ namespace TomlEditor
                 }
                 else if (IsTableHeader(lineText))
                 {
-                    // After a table header [table] or [[array]], indent the next line
+                    // After a table header [table] or [[array]], use the same indentation as the table
                     var indentation = GetIndentation(lineText);
-                    edit.Insert(caretPosition.Position, Environment.NewLine + indentation + "  ");
+                    edit.Insert(caretPosition.Position, Environment.NewLine + indentation);
                 }
                 else
                 {

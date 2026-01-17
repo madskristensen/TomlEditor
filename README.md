@@ -16,6 +16,7 @@
 
 ✅ **Syntax Highlighting** — Beautiful colorization for keys, values, tables, and comments  
 ✅ **Real-time Validation** — Catch errors as you type with instant feedback  
+✅ **Navigation Bar** — Jump to tables and sections using the editor dropdowns  
 ✅ **Code Outlining** — Collapse and expand sections for easier navigation  
 ✅ **Commenting** — Toggle comments with `Ctrl+/` or `Ctrl+K, Ctrl+C`  
 ✅ **Formatting** — Format Document (`Ctrl+K, Ctrl+D`) and Format Selection  
@@ -26,6 +27,50 @@
 ✅ **Lightweight & Fast** — Designed for performance with zero impact on your workflow
 
 Whether you're working with Cargo.toml, pyproject.toml, or any other TOML configuration, this extension makes editing a breeze.
+
+---
+
+### Syntax Highlighting
+
+Full colorization support for all TOML elements including keys, strings, numbers, booleans, dates, tables, array of tables, and comments. The highlighting adapts to your Visual Studio color theme.
+
+<!-- ![Syntax Highlighting](art/syntax-highlighting.png) -->
+
+### Real-time Validation
+
+Errors are detected and underlined as you type. Hover over any error to see a detailed message explaining the issue. Errors also appear in the Error List window for easy navigation.
+
+<!-- ![Validation](art/validation.png) -->
+
+### Navigation Bar
+
+Use the dropdown menus at the top of the editor to quickly jump between tables and sections in your document. The left dropdown shows the document structure, and the right dropdown shows the current section's contents.
+
+![Navigation Bar](art/dropdowns.png)
+
+### Code Outlining
+
+Collapse and expand table sections to focus on what matters. Click the minus icon in the margin or use `Ctrl+M, Ctrl+M` to toggle outlining.
+
+<!-- ![Code Outlining](art/outlining.png) -->
+
+### Commenting
+
+Toggle line comments with `Ctrl+K, Ctrl+C` (comment) and `Ctrl+K, Ctrl+U` (uncomment), or use `Ctrl+/` to toggle. Works with single lines and selections.
+
+### Formatting
+
+Format your entire document with `Ctrl+K, Ctrl+D` or format a selection with `Ctrl+K, Ctrl+F`. The formatter normalizes whitespace and alignment for consistent, readable TOML.
+
+### Smart Indentation
+
+When you press Enter after a table header like `[section]`, the cursor automatically indents on the next line. Pressing Enter on an empty line removes unnecessary whitespace.
+
+### Brace Matching
+
+Matching brackets `[]`, `[[]]`, and quotes are highlighted when your cursor is adjacent to them, making it easy to see matching pairs.
+
+---
 
 ## JSON Schema Support
 
@@ -40,8 +85,9 @@ Supported files include:
 - `Cargo.toml` — Rust package manifest
 - `.rustfmt.toml` / `rustfmt.toml` — Rust formatter configuration
 - `netlify.toml` — Netlify deployment configuration
+- `fly.toml` — Fly.io application configuration
 - `samconfig.toml` — AWS SAM configuration
-- And many more...
+- And many more from [SchemaStore.org](https://www.schemastore.org/json/)...
 
 ### Manual Schema Directive
 
@@ -58,12 +104,39 @@ You can use:
 - **HTTPS URLs** — `https://json.schemastore.org/pyproject.json`
 - **Local files** — `file:///C:/schemas/my-schema.json`
 
-### What You Get
+### IntelliSense
 
-- **Validation** — Errors and warnings when your TOML doesn't match the schema
-- **IntelliSense** — Autocomplete for keys and enum values (`Ctrl+Space`)
-- **QuickInfo** — Hover over keys to see descriptions, types, and allowed values
-- **Go to Definition** — Press `F12` on any key to open the schema and navigate to its definition
+Press `Ctrl+Space` to see available keys, tables, and values at the current position. The completion list shows:
+
+- **Keys** with their types (string, number, boolean, etc.)
+- **Tables** with `[brackets]` indicating they are sections
+- **Array of tables** with `[[double brackets]]`
+- **Enum values** when a property has a fixed set of allowed values
+
+<!-- ![IntelliSense](art/intellisense.png) -->
+
+### QuickInfo
+
+Hover over any key to see its description, type, and whether it's required. For enum properties, you'll also see the list of allowed values.
+
+<!-- ![QuickInfo](art/quickinfo.png) -->
+
+### Schema Validation
+
+When a schema is available, the extension validates your TOML in real-time:
+
+- **Missing required properties** — warns when required keys are not present
+- **Unknown properties** — flags keys that aren't defined in the schema
+- **Type mismatches** — errors when values don't match expected types
+- **Invalid enum values** — errors when a value isn't in the allowed list
+
+<!-- ![Schema Validation](art/schema-validation.png) -->
+
+### Go to Definition
+
+Press `F12` on any key to open the JSON schema file and jump directly to that property's definition. This is useful for understanding the full schema specification or contributing improvements.
+
+---
 
 ## Getting Started
 
