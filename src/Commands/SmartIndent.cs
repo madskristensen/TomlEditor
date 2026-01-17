@@ -32,6 +32,12 @@ namespace TomlEditor
                     edit.Delete(currentLine.Start.Position, currentLine.Length);
                     edit.Insert(currentLine.Start.Position, Environment.NewLine);
                 }
+                else if (IsTableHeader(lineText))
+                {
+                    // After a table header [table] or [[array]], indent the next line
+                    var indentation = GetIndentation(lineText);
+                    edit.Insert(caretPosition.Position, Environment.NewLine + indentation + "  ");
+                }
                 else
                 {
                     // Insert a new line with the same indentation as the current line
@@ -66,6 +72,14 @@ namespace TomlEditor
             }
 
             return lineText.Substring(0, index);
+        }
+
+        private static bool IsTableHeader(string lineText)
+        {
+            var trimmed = lineText.Trim();
+
+            // Check for table header [name] or array of tables [[name]]
+            return (trimmed.StartsWith("[") && trimmed.EndsWith("]"));
         }
     }
 }
