@@ -150,14 +150,31 @@ namespace TomlEditor.Schema
 
                     ImageElement icon = completion.IsDeprecated ? _deprecatedIcon : _tableIcon;
                     var displayText = completion.IsDeprecated ? $"{completion.Key} (deprecated)" : completion.Key;
-                    var insertText = completion.Key;
+
+                    // Use double brackets for array of tables (from schema), otherwise match what user typed
+                    var isArrayOfTables = completion.Type == "array of tables";
+                    var closeBrackets = isArrayOfTables ? "]]" : "]";
+
+                    // If schema says it's an array of tables but user only typed [, we need to add the opening bracket too
+                    string insertText;
+                    if (isArrayOfTables && !context.IsArrayTable)
+                    {
+                        // User typed [ but needs [[, so insert [tablename]]
+                        insertText = $"[{completion.Key}{closeBrackets}";
+                    }
+                    else
+                    {
+                        insertText = $"{completion.Key}{closeBrackets}";
+                    }
+
+                    var suffix = completion.Type ?? string.Empty;
 
                     var item = new CompletionItem(
                         displayText,
                         this,
                         icon,
                         ImmutableArray<CompletionFilter>.Empty,
-                        string.Empty,
+                        suffix,
                         insertText,
                         insertText,
                         insertText,
@@ -213,8 +230,13 @@ namespace TomlEditor.Schema
                         continue;
                     }
 
-                    // For tables at root level, also skip if the table already exists
-                    if (completion.IsTable && string.IsNullOrEmpty(context.TablePath) && existingTables.Contains(completion.Key))
+                    // Build the full table path for sub-tables
+                    var fullTablePath = string.IsNullOrEmpty(context.TablePath)
+                        ? completion.Key
+                        : $"{context.TablePath}.{completion.Key}";
+
+                    // For tables, also skip if the table already exists
+                    if (completion.IsTable && existingTables.Contains(fullTablePath))
                     {
                         continue;
                     }
@@ -222,34 +244,45 @@ namespace TomlEditor.Schema
                     // Use TableIcon for table completions, otherwise KeyIcon
                     ImageElement icon = completion.IsDeprecated ? _deprecatedIcon : (completion.IsTable ? _tableIcon : _keyIcon);
 
-                    // For tables, show with brackets in display and include type info
+                    // For tables, show with full path and brackets in display
                     string displayText;
                     if (completion.IsTable)
                     {
-                        displayText = completion.IsDeprecated ? $"[{completion.Key}] (deprecated)" : $"[{completion.Key}]";
+                        var isArrayOfTables = completion.Type == "array of table";
+                        var brackets = isArrayOfTables ? "[[" : "[";
+                        var closeBrackets = isArrayOfTables ? "]]" : "]";
+                        displayText = completion.IsDeprecated
+                            ? $"{brackets}{fullTablePath}{closeBrackets} (deprecated)"
+                            : $"{brackets}{fullTablePath}{closeBrackets}";
                     }
                     else
                     {
                         displayText = completion.IsDeprecated ? $"{completion.Key} (deprecated)" : completion.Key;
                     }
 
-                    // For tables at root level, insert with brackets
+                    // For tables, insert with full path and brackets (double for array of tables)
                     string insertText;
-                    if (completion.IsTable && string.IsNullOrEmpty(context.TablePath))
+                    if (completion.IsTable)
                     {
-                        insertText = $"[{completion.Key}]";
+                        var isArrayOfTables = completion.Type == "array of table";
+                        var brackets = isArrayOfTables ? "[[" : "[";
+                        var closeBrackets = isArrayOfTables ? "]]" : "]";
+                        insertText = $"{brackets}{fullTablePath}{closeBrackets}";
                     }
                     else
                     {
                         insertText = completion.Key;
                     }
 
+                    // Show type as suffix on the right side of the completion item
+                    var suffix = completion.Type ?? string.Empty;
+
                     var item = new CompletionItem(
                         displayText,
                         this,
                         icon,
                         ImmutableArray<CompletionFilter>.Empty,
-                        string.Empty,
+                        suffix,
                         insertText,
                         completion.Key, // Sort text - use key without brackets for proper alphabetical sort
                         completion.Key, // Filter text - use key without brackets for filtering
@@ -276,7 +309,7 @@ namespace TomlEditor.Schema
                 if (item.Properties.TryGetProperty("Type", out string type) && !string.IsNullOrEmpty(type))
                 {
                     elements.Add(new ClassifiedTextElement(
-                        new ClassifiedTextRun(PredefinedClassificationTypeNames.Keyword, $"({type}) ")));
+                        new ClassifiedTextRun(PredefinedClassificationTypeNames.Keyword, type)));
                 }
 
                 elements.Add(new ClassifiedTextElement(

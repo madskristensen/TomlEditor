@@ -54,7 +54,7 @@ namespace TomlEditor.Schema
                 elements.Add(new ContainerElement(
                     ContainerElementStyle.Wrapped,
                     new ClassifiedTextElement(
-                        new ClassifiedTextRun(Microsoft.VisualStudio.Language.StandardClassification.PredefinedClassificationTypeNames.Keyword, $"({type})"))));
+                        new ClassifiedTextRun(Microsoft.VisualStudio.Language.StandardClassification.PredefinedClassificationTypeNames.Keyword, type))));
             }
 
             // Add description
