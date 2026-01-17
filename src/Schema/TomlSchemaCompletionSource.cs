@@ -50,9 +50,12 @@ namespace TomlEditor.Schema
                 return CompletionStartData.DoesNotParticipateInCompletion;
             }
 
-            // Check if there's a schema directive in the document
+            // Check if there's a schema available (directive or catalog match)
             string documentText = _textView.TextBuffer.CurrentSnapshot.GetText();
-            if (string.IsNullOrEmpty(TomlSchemaService.GetSchemaUrl(documentText)))
+            Document document = _textView.TextBuffer.GetDocument();
+            string fileName = document?.FileName;
+
+            if (!TomlSchemaService.HasSchema(documentText, fileName))
             {
                 return CompletionStartData.DoesNotParticipateInCompletion;
             }
@@ -110,6 +113,7 @@ namespace TomlEditor.Schema
         {
             string documentText = _textView.TextBuffer.CurrentSnapshot.GetText();
             Document document = _textView.TextBuffer.GetDocument();
+            string fileName = document?.FileName;
             CompletionContextInfo context = GetContextInfo(triggerLocation, document);
 
             var items = new List<CompletionItem>();
@@ -121,34 +125,34 @@ namespace TomlEditor.Schema
                     ? context.CurrentKey
                     : $"{context.TablePath}.{context.CurrentKey}";
 
-                SchemaPropertyInfo propInfo = await _schemaService.GetPropertyInfoAsync(documentText, propertyPath);
+                SchemaPropertyInfo propInfo = await _schemaService.GetPropertyInfoAsync(documentText, propertyPath, fileName);
 
                 if (propInfo != null)
                 {
                     // Add enum completions
                     if (propInfo.EnumValues != null)
                     {
-                        foreach (string value in propInfo.EnumValues)
-                        {
-                            string displayText = $"\"{value}\"";
-                            items.Add(new CompletionItem(displayText, this, ValueIcon));
+                                    foreach (string value in propInfo.EnumValues)
+                                    {
+                                        string displayText = $"\"{value}\"";
+                                        items.Add(new CompletionItem(displayText, this, ValueIcon));
+                                    }
+                                }
+                                // Add boolean completions
+                                else if (propInfo.Type == "boolean")
+                                {
+                                    items.Add(new CompletionItem("true", this, ValueIcon));
+                                    items.Add(new CompletionItem("false", this, ValueIcon));
+                                }
+                            }
                         }
-                    }
-                    // Add boolean completions
-                    else if (propInfo.Type == "boolean")
-                    {
-                        items.Add(new CompletionItem("true", this, ValueIcon));
-                        items.Add(new CompletionItem("false", this, ValueIcon));
-                    }
-                }
-            }
-            else
-            {
-                // Get key completions from schema
-                IEnumerable<SchemaCompletion> completions = await _schemaService.GetCompletionsAsync(documentText, context.TablePath);
-                HashSet<string> existingKeys = GetExistingKeys(document, context.TablePath);
+                        else
+                        {
+                            // Get key completions from schema
+                            IEnumerable<SchemaCompletion> completions = await _schemaService.GetCompletionsAsync(documentText, context.TablePath, fileName);
+                            HashSet<string> existingKeys = GetExistingKeys(document, context.TablePath);
 
-                foreach (SchemaCompletion completion in completions)
+                            foreach (SchemaCompletion completion in completions)
                 {
                     // Skip keys that already exist
                     if (existingKeys.Contains(completion.Key))

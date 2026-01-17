@@ -46,19 +46,14 @@ namespace TomlEditor.Schema
             }
 
             string documentText = _buffer.CurrentSnapshot.GetText();
-
-            // Check if schema is specified
-            if (string.IsNullOrEmpty(TomlSchemaService.GetSchemaUrl(documentText)))
-            {
-                return null;
-            }
-
             Document document = _buffer.GetDocument();
 
             if (document?.Model == null)
             {
                 return null;
             }
+
+            string fileName = document.FileName;
 
             // Find the key at the trigger point
             KeyInfo keyInfo = FindKeyAtPosition(triggerPoint.Value, document);
@@ -68,8 +63,8 @@ namespace TomlEditor.Schema
                 return null;
             }
 
-            // Get property info from schema
-            SchemaPropertyInfo propertyInfo = await _schemaService.GetPropertyInfoAsync(documentText, keyInfo.FullPath);
+            // Get property info from schema (handles both directive and catalog matching)
+            SchemaPropertyInfo propertyInfo = await _schemaService.GetPropertyInfoAsync(documentText, keyInfo.FullPath, fileName);
 
             if (propertyInfo == null)
             {
@@ -158,67 +153,134 @@ namespace TomlEditor.Schema
             return position >= span.Value.Start.Offset && position <= span.Value.End.Offset;
         }
 
-        private static object BuildTooltipContent(SchemaPropertyInfo property)
-        {
-            var elements = new List<object>();
-
-            // Header: key name with type
-            string header = string.IsNullOrEmpty(property.Type)
-                ? property.Name
-                : $"{property.Name}: {property.Type}";
-
-            elements.Add(new ClassifiedTextElement(
-                new ClassifiedTextRun(PredefinedClassificationTypeNames.Identifier, header)));
-
-            // Deprecated warning
-            if (property.IsDeprecated)
-            {
-                elements.Add(new ClassifiedTextElement(
-                    new ClassifiedTextRun(PredefinedClassificationTypeNames.ExcludedCode, "⚠️ Deprecated")));
-            }
-
-            // Required indicator
-            if (property.IsRequired)
-            {
-                elements.Add(new ClassifiedTextElement(
-                    new ClassifiedTextRun(PredefinedClassificationTypeNames.Keyword, "(required)")));
-            }
-
-            // Description
-            if (!string.IsNullOrEmpty(property.Description))
-            {
-                elements.Add(new ClassifiedTextElement(
-                    new ClassifiedTextRun(PredefinedClassificationTypeNames.NaturalLanguage, property.Description)));
-            }
-
-            // Enum values
-            if (property.EnumValues != null && property.EnumValues.Length > 0)
-            {
-                string enumValues = string.Join(", ", property.EnumValues.Select(e => $"'{e}'"));
-                elements.Add(new ClassifiedTextElement(
-                    new ClassifiedTextRun(PredefinedClassificationTypeNames.Comment, $"Allowed: {enumValues}")));
-                }
-
-                // Default value
-                if (!string.IsNullOrEmpty(property.Default))
+                private static object BuildTooltipContent(SchemaPropertyInfo property)
                 {
-                    elements.Add(new ClassifiedTextElement(
-                        new ClassifiedTextRun(PredefinedClassificationTypeNames.Comment, $"Default: {property.Default}")));
+                    var elements = new List<object>();
+
+                    // Header: key name with type (styled like a declaration)
+                    var headerRuns = new List<ClassifiedTextRun>
+                    {
+                        new ClassifiedTextRun(PredefinedClassificationTypeNames.Identifier, property.Name)
+                    };
+
+                    if (!string.IsNullOrEmpty(property.Type))
+                    {
+                        headerRuns.Add(new ClassifiedTextRun(PredefinedClassificationTypeNames.Punctuation, ": "));
+                        headerRuns.Add(new ClassifiedTextRun(PredefinedClassificationTypeNames.Keyword, property.Type));
+                    }
+
+                    if (property.IsRequired)
+                    {
+                        headerRuns.Add(new ClassifiedTextRun(PredefinedClassificationTypeNames.Punctuation, " "));
+                        headerRuns.Add(new ClassifiedTextRun(PredefinedClassificationTypeNames.Keyword, "(required)"));
+                    }
+
+                    elements.Add(new ClassifiedTextElement(headerRuns.ToArray()));
+
+                    // Deprecated warning
+                    if (property.IsDeprecated)
+                    {
+                        elements.Add(new ClassifiedTextElement(
+                            new ClassifiedTextRun(PredefinedClassificationTypeNames.PreprocessorKeyword, "⚠️ Deprecated")));
+                    }
+
+                    // Description - clean up markdown
+                    if (!string.IsNullOrEmpty(property.Description))
+                    {
+                        string cleanDescription = CleanMarkdown(property.Description);
+                        if (!string.IsNullOrWhiteSpace(cleanDescription))
+                        {
+                            elements.Add(new ClassifiedTextElement(
+                                new ClassifiedTextRun(PredefinedClassificationTypeNames.NaturalLanguage, cleanDescription)));
+                        }
+                    }
+
+                    // Enum values
+                    if (property.EnumValues != null && property.EnumValues.Length > 0)
+                    {
+                        int maxToShow = 10;
+                        var valuesToShow = property.EnumValues.Take(maxToShow);
+                        string enumList = string.Join(" | ", valuesToShow.Select(e => $"\"{e}\""));
+
+                        if (property.EnumValues.Length > maxToShow)
+                        {
+                            enumList += $" ... (+{property.EnumValues.Length - maxToShow} more)";
+                        }
+
+                        var enumRuns = new List<ClassifiedTextRun>
+                        {
+                            new ClassifiedTextRun(PredefinedClassificationTypeNames.Comment, "Allowed: "),
+                            new ClassifiedTextRun(PredefinedClassificationTypeNames.String, enumList)
+                        };
+
+                        elements.Add(new ClassifiedTextElement(enumRuns.ToArray()));
+                    }
+
+                    // Default value
+                    if (!string.IsNullOrEmpty(property.Default))
+                    {
+                        var defaultRuns = new List<ClassifiedTextRun>
+                        {
+                            new ClassifiedTextRun(PredefinedClassificationTypeNames.Comment, "Default: "),
+                            new ClassifiedTextRun(PredefinedClassificationTypeNames.String, property.Default)
+                        };
+
+                        elements.Add(new ClassifiedTextElement(defaultRuns.ToArray()));
+                    }
+
+                    return new ContainerElement(ContainerElementStyle.Stacked, elements);
                 }
 
-                return new ContainerElement(ContainerElementStyle.Stacked, elements);
-            }
+                /// <summary>
+                /// Removes markdown formatting from text for cleaner tooltip display.
+                /// </summary>
+                private static string CleanMarkdown(string text)
+                {
+                    if (string.IsNullOrEmpty(text))
+                    {
+                        return text;
+                    }
 
-            public void Dispose()
-            {
-                // Nothing to dispose
-            }
+                    // Remove code blocks (```...```)
+                    text = System.Text.RegularExpressions.Regex.Replace(text, @"```[\s\S]*?```", "", System.Text.RegularExpressions.RegexOptions.Multiline);
 
-        private class KeyInfo
-        {
-            public string KeyName { get; set; }
-            public string FullPath { get; set; }
-            public Span Span { get; set; }
+                    // Remove inline code (`...`)
+                    text = System.Text.RegularExpressions.Regex.Replace(text, @"`([^`]+)`", "$1");
+
+                    // Remove markdown links [text](url) -> text
+                    text = System.Text.RegularExpressions.Regex.Replace(text, @"\[([^\]]+)\]\([^)]+\)", "$1");
+
+                    // Remove bold/italic markers
+                    text = System.Text.RegularExpressions.Regex.Replace(text, @"\*\*([^*]+)\*\*", "$1");
+                    text = System.Text.RegularExpressions.Regex.Replace(text, @"\*([^*]+)\*", "$1");
+                    text = System.Text.RegularExpressions.Regex.Replace(text, @"__([^_]+)__", "$1");
+                    text = System.Text.RegularExpressions.Regex.Replace(text, @"_([^_]+)_", "$1");
+
+                    // Remove headers (# Header)
+                    text = System.Text.RegularExpressions.Regex.Replace(text, @"^#+\s*", "", System.Text.RegularExpressions.RegexOptions.Multiline);
+
+                    // Remove bullet points
+                    text = System.Text.RegularExpressions.Regex.Replace(text, @"^\s*[-*+]\s+", "", System.Text.RegularExpressions.RegexOptions.Multiline);
+
+                    // Collapse multiple newlines
+                    text = System.Text.RegularExpressions.Regex.Replace(text, @"\n{3,}", "\n\n");
+
+                    // Trim and collapse whitespace
+                    text = text.Trim();
+
+                    return text;
+                }
+
+                public void Dispose()
+                {
+                    // Nothing to dispose
+                }
+
+                private class KeyInfo
+                {
+                    public string KeyName { get; set; }
+                    public string FullPath { get; set; }
+                    public Span Span { get; set; }
+                }
+            }
         }
-    }
-}

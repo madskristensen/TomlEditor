@@ -28,35 +28,40 @@ Whether you're working with Cargo.toml, pyproject.toml, or any other TOML config
 
 ## JSON Schema Support
 
-Enable schema-based validation and IntelliSense by adding a `#:schema` directive at the top of your TOML file:
+The extension provides schema-based validation and IntelliSense for TOML files.
+
+### Automatic Schema Detection
+
+Schemas are **automatically detected** for well-known TOML files using the [SchemaStore.org](https://www.schemastore.org/json/) catalog. Just open a file and it works!
+
+Supported files include:
+- `pyproject.toml` — Python project configuration
+- `Cargo.toml` — Rust package manifest
+- `.rustfmt.toml` / `rustfmt.toml` — Rust formatter configuration
+- `netlify.toml` — Netlify deployment configuration
+- `samconfig.toml` — AWS SAM configuration
+- And many more...
+
+### Manual Schema Directive
+
+For files not in the catalog, or to override the automatic detection, add a `#:schema` directive at the top of your file:
 
 ```toml
-#:schema https://json.schemastore.org/pyproject.json
+#:schema https://dystroy.org/bacon/.bacon.schema.json
 
-[project]
-name = "my-project"
-version = "1.0.0"
+[jobs.check]
+command = ["cargo", "check"]
 ```
+
+You can use:
+- **HTTPS URLs** — `https://json.schemastore.org/pyproject.json`
+- **Local files** — `file:///C:/schemas/my-schema.json`
 
 ### What You Get
 
 - **Validation** — Errors and warnings when your TOML doesn't match the schema
-- **IntelliSense** — Autocomplete for keys and enum values
+- **IntelliSense** — Autocomplete for keys and enum values (`Ctrl+Space`)
 - **QuickInfo** — Hover over keys to see descriptions, types, and allowed values
-
-### Finding Schemas
-
-Many popular TOML formats have schemas available at [SchemaStore.org](https://www.schemastore.org/json/):
-
-| File | Schema URL |
-|------|------------|
-| `pyproject.toml` | `https://www.schemastore.org/pyproject` |
-| `Cargo.toml` | `https://www.schemastore.org/cargo` |
-| `.rustfmt.toml` | `https://www.schemastore.org/rustfmt` |
-| `netlify.toml` | `https://www.schemastore.org/netlify` |
-| `bacon.toml` | `https://dystroy.org/bacon/.bacon.schema.json` |
-
-You can also use `file://` URLs to reference local schema files.
 
 ## Getting Started
 

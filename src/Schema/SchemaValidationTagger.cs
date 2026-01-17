@@ -54,18 +54,10 @@ namespace TomlEditor.Schema
             var errors = new List<ITagSpan<IErrorTag>>();
             ITextSnapshot snapshot = _buffer.CurrentSnapshot;
             string text = snapshot.GetText();
+            string fileName = _document?.FileName;
 
-            // Check if schema is specified
-            string schemaUrl = TomlSchemaService.GetSchemaUrl(text);
-
-            if (string.IsNullOrEmpty(schemaUrl))
-            {
-                UpdateTags(errors);
-                return;
-            }
-
-            // Use NJsonSchema for validation
-            IList<SchemaValidationError> validationErrors = await _schemaService.ValidateAsync(text);
+            // Use NJsonSchema for validation (handles both directive and catalog matching)
+            IList<SchemaValidationError> validationErrors = await _schemaService.ValidateAsync(text, fileName);
 
             foreach (SchemaValidationError error in validationErrors)
             {
