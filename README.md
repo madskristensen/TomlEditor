@@ -17,9 +17,46 @@
 ✅ **Syntax Highlighting** — Beautiful colorization for keys, values, tables, and comments  
 ✅ **Real-time Validation** — Catch errors as you type with instant feedback  
 ✅ **Code Outlining** — Collapse and expand sections for easier navigation  
+✅ **Commenting** — Toggle comments with `Ctrl+/` or `Ctrl+K, Ctrl+C`  
+✅ **Formatting** — Format Document (`Ctrl+K, Ctrl+D`) and Format Selection  
+✅ **Smart Indentation** — Automatic indentation when pressing Enter  
+✅ **Brace Matching** — Highlights matching brackets and quotes  
+✅ **JSON Schema Support** — Validation and IntelliSense powered by JSON Schema  
 ✅ **Lightweight & Fast** — Designed for performance with zero impact on your workflow  
 
 Whether you're working with Cargo.toml, pyproject.toml, or any other TOML configuration, this extension makes editing a breeze.
+
+## JSON Schema Support
+
+Enable schema-based validation and IntelliSense by adding a `#:schema` directive at the top of your TOML file:
+
+```toml
+#:schema https://json.schemastore.org/pyproject.json
+
+[project]
+name = "my-project"
+version = "1.0.0"
+```
+
+### What You Get
+
+- **Validation** — Errors and warnings when your TOML doesn't match the schema
+- **IntelliSense** — Autocomplete for keys and enum values
+- **QuickInfo** — Hover over keys to see descriptions, types, and allowed values
+
+### Finding Schemas
+
+Many popular TOML formats have schemas available at [SchemaStore.org](https://www.schemastore.org/json/):
+
+| File | Schema URL |
+|------|------------|
+| `pyproject.toml` | `https://www.schemastore.org/pyproject` |
+| `Cargo.toml` | `https://www.schemastore.org/cargo` |
+| `.rustfmt.toml` | `https://www.schemastore.org/rustfmt` |
+| `netlify.toml` | `https://www.schemastore.org/netlify` |
+| `bacon.toml` | `https://dystroy.org/bacon/.bacon.schema.json` |
+
+You can also use `file://` URLs to reference local schema files.
 
 ## Getting Started
 
