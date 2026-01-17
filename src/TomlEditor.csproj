@@ -47,6 +47,7 @@
   <ItemGroup>
     <Compile Include="Commands\Commenting.cs" />
     <Compile Include="Commands\Formatting.cs" />
+    <Compile Include="Commands\GoToDefinitionCommand.cs" />
     <Compile Include="Commands\SmartIndent.cs" />
     <Compile Include="Commands\ToggleComment.cs" />
     <Compile Include="Constants.cs" />
@@ -122,7 +123,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="8.0.0" /><PackageReference Include="NJsonSchema" Version="11.1.0" />
+    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="8.0.0" />
+    <PackageReference Include="NJsonSchema" Version="11.1.0" />
     <PackageReference Include="Tomlyn">
       <Version>0.19.0</Version>
     </PackageReference>

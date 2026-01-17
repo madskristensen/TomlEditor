@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
@@ -19,6 +20,9 @@ namespace TomlEditor.Schema
     public class TomlSchemaService
     {
         private const string SchemaStoreCatalogUrl = "https://www.schemastore.org/api/json/catalog.json";
+        private static readonly TimeSpan CacheExpiration = TimeSpan.FromDays(7);
+        private static readonly string CacheDirectory = Path.Combine(Path.GetTempPath(), "TomlEditor", "Schemas");
+        private static readonly string CatalogCacheFile = Path.Combine(CacheDirectory, "catalog.json");
 
         private static readonly Regex SchemaDirectiveRegex = new Regex(
             @"^\s*#:schema\s+(?<url>\S+)",
@@ -34,7 +38,7 @@ namespace TomlEditor.Schema
         static TomlSchemaService()
         {
             HttpClient.DefaultRequestHeaders.Add("User-Agent", "TomlEditor-VisualStudio");
-            HttpClient.Timeout = System.TimeSpan.FromSeconds(10);
+            HttpClient.Timeout = TimeSpan.FromSeconds(10);
 
             // Start loading the catalog in the background
             _catalogLoadTask = LoadCatalogAsync();
@@ -75,15 +79,215 @@ namespace TomlEditor.Schema
         }
 
         /// <summary>
-        /// Gets the schema for a document, loading from cache or fetching from URL.
-        /// Falls back to SchemaStore.org catalog matching if no directive is present.
+        /// Gets navigation information to the schema definition for a property path.
+        /// Returns the cached file path and line number for navigation.
         /// </summary>
-        public async Task<JsonSchema> GetSchemaAsync(string documentText, string fileName = null)
+        public async Task<SchemaNavigationInfo> GetSchemaNavigationInfoAsync(string documentText, string propertyPath, string fileName = null)
         {
             // First, check for explicit #:schema directive
             string url = GetSchemaUrl(documentText);
 
             // If no directive, try to match from SchemaStore catalog
+            if (string.IsNullOrEmpty(url) && !string.IsNullOrEmpty(fileName))
+            {
+                await EnsureCatalogLoadedAsync();
+                url = FindSchemaInCatalog(fileName);
+            }
+
+            if (string.IsNullOrEmpty(url))
+            {
+                return null;
+            }
+
+            // Get or create cached schema file
+            string cachedFilePath = await GetOrCreateCachedSchemaFileAsync(url);
+            if (string.IsNullOrEmpty(cachedFilePath))
+            {
+                return null;
+            }
+
+            // Find the line number for the property path
+            int lineNumber = FindPropertyLineInSchema(cachedFilePath, propertyPath);
+
+            return new SchemaNavigationInfo
+            {
+                FilePath = cachedFilePath,
+                        LineNumber = lineNumber,
+                        PropertyPath = propertyPath
+                    };
+                }
+
+                private static readonly Dictionary<string, string> _schemaFileCache = new Dictionary<string, string>();
+                private static readonly object _fileCacheLock = new object();
+
+                /// <summary>
+                /// Checks if a cached file exists and is not expired.
+                /// </summary>
+                private static bool IsCacheValid(string filePath)
+                {
+                    if (!File.Exists(filePath))
+                    {
+                        return false;
+                    }
+
+                    DateTime lastWriteTime = File.GetLastWriteTimeUtc(filePath);
+                    return DateTime.UtcNow - lastWriteTime < CacheExpiration;
+                }
+
+                /// <summary>
+                /// Gets or creates a cached schema file on disk for the given URL.
+                /// </summary>
+                private async Task<string> GetOrCreateCachedSchemaFileAsync(string url)
+                {
+                    string schemaName = GetSchemaNameFromUrl(url);
+                    Directory.CreateDirectory(CacheDirectory);
+                    string cachedFilePath = Path.Combine(CacheDirectory, schemaName + ".json");
+
+                    // Check if we have a valid cached file
+                    lock (_fileCacheLock)
+                    {
+                        if (_schemaFileCache.TryGetValue(url, out string existingPath) && IsCacheValid(existingPath))
+                        {
+                            return existingPath;
+                        }
+
+                        // Also check disk cache even if not in memory cache
+                        if (IsCacheValid(cachedFilePath))
+                        {
+                            _schemaFileCache[url] = cachedFilePath;
+                            return cachedFilePath;
+                        }
+                    }
+
+                    try
+                    {
+                        string schemaContent;
+
+                        if (url.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string filePath = new Uri(url).LocalPath;
+                            schemaContent = File.ReadAllText(filePath);
+                        }
+                        else
+                        {
+                            schemaContent = await HttpClient.GetStringAsync(url);
+                        }
+
+                        File.WriteAllText(cachedFilePath, schemaContent);
+
+                        lock (_fileCacheLock)
+                        {
+                            _schemaFileCache[url] = cachedFilePath;
+                        }
+
+                        return cachedFilePath;
+                    }
+                    catch
+                    {
+                        // If download fails but we have an old cached file, use it anyway
+                        if (File.Exists(cachedFilePath))
+                        {
+                            lock (_fileCacheLock)
+                            {
+                                _schemaFileCache[url] = cachedFilePath;
+                            }
+                            return cachedFilePath;
+                                        }
+
+                                        return null;
+                                    }
+                                }
+
+                        private static string GetSchemaNameFromUrl(string url)
+                        {
+                            try
+                            {
+                                var uri = new Uri(url);
+                                string name = Path.GetFileNameWithoutExtension(uri.LocalPath);
+                                if (string.IsNullOrEmpty(name))
+                                {
+                                    name = uri.Host.Replace(".", "_");
+                                }
+                                // Sanitize the name for use as a filename
+                                foreach (char c in Path.GetInvalidFileNameChars())
+                                {
+                                    name = name.Replace(c, '_');
+                                }
+                                return name;
+                            }
+                            catch
+                            {
+                                return "schema_" + url.GetHashCode().ToString("X8");
+                            }
+                        }
+
+                        /// <summary>
+                        /// Finds the line number in the schema file where the property is defined.
+                        /// </summary>
+                        private static int FindPropertyLineInSchema(string filePath, string propertyPath)
+                        {
+                            if (string.IsNullOrEmpty(propertyPath))
+                            {
+                                return 1;
+                            }
+
+                            try
+                            {
+                                string[] lines = File.ReadAllLines(filePath);
+                                string[] pathParts = propertyPath.Split('.');
+                                string targetProperty = pathParts[pathParts.Length - 1];
+
+                                // Search for the property definition pattern: "propertyName": {
+                                string searchPattern = $"\"{targetProperty}\"";
+
+                                // Track nesting to find the right property at the correct depth
+                                int propertiesDepth = 0;
+                                int targetDepth = pathParts.Length;
+
+                                for (int i = 0; i < lines.Length; i++)
+                                {
+                                    string line = lines[i];
+
+                                    // Count "properties" occurrences to track depth
+                                    if (line.Contains("\"properties\""))
+                                    {
+                                        propertiesDepth++;
+                                    }
+
+                                    // Check if this line contains our target property at approximately the right depth
+                                    if (line.Contains(searchPattern) && propertiesDepth >= targetDepth - 1)
+                                    {
+                                        return i + 1; // Line numbers are 1-based
+                                    }
+                                }
+
+                                // Fallback: just find the first occurrence of the property name
+                                for (int i = 0; i < lines.Length; i++)
+                                {
+                                    if (lines[i].Contains(searchPattern))
+                                    {
+                                        return i + 1;
+                                    }
+                                }
+                            }
+                            catch
+                            {
+                                // Ignore errors in line finding
+                            }
+
+                            return 1; // Default to first line
+                        }
+
+                        /// <summary>
+                        /// Gets the schema for a document, loading from cache or fetching from URL.
+                        /// Falls back to SchemaStore.org catalog matching if no directive is present.
+                        /// </summary>
+                        public async Task<JsonSchema> GetSchemaAsync(string documentText, string fileName = null)
+                        {
+                            // First, check for explicit #:schema directive
+                            string url = GetSchemaUrl(documentText);
+
+                            // If no directive, try to match from SchemaStore catalog
             if (string.IsNullOrEmpty(url) && !string.IsNullOrEmpty(fileName))
             {
                 await EnsureCatalogLoadedAsync();
@@ -203,148 +407,187 @@ namespace TomlEditor.Schema
                     Key = kvp.Key,
                     Description = kvp.Value.Description,
                     Type = GetTypeString(kvp.Value),
-                    IsDeprecated = kvp.Value.IsDeprecated
-                });
-            }
-
-            #region SchemaStore Catalog
-
-            private static async Task LoadCatalogAsync()
-            {
-                try
-                {
-                    string json = await HttpClient.GetStringAsync(SchemaStoreCatalogUrl);
-                    var catalog = JsonConvert.DeserializeObject<SchemaStoreCatalog>(json);
-
-                    if (catalog?.Schemas != null)
-                    {
-                        // Filter to only TOML-related schemas
-                        lock (_catalogLock)
-                        {
-                            _catalogEntries = catalog.Schemas
-                                .Where(s => s.FileMatch != null && s.FileMatch.Any(f => f.EndsWith(".toml")))
-                                .ToList();
-                        }
-                    }
-                }
-                catch
-                {
-                    // Catalog loading failed - continue without catalog support
-                    _catalogEntries = new List<SchemaStoreCatalogEntry>();
-                }
-            }
-
-            private static async Task EnsureCatalogLoadedAsync()
-            {
-                if (_catalogLoadTask != null)
-                {
-                    await _catalogLoadTask;
-                }
-            }
-
-            private static string FindSchemaInCatalog(string fileName)
-            {
-                if (_catalogEntries == null || string.IsNullOrEmpty(fileName))
-                {
-                    return null;
-                }
-
-                // Get just the filename without path
-                string name = System.IO.Path.GetFileName(fileName);
-                // Also get the full path for patterns that include directory matching
-                string fullPath = fileName.Replace("\\", "/");
-
-                foreach (var entry in _catalogEntries)
-                {
-                    if (entry.FileMatch == null)
-                    {
-                        continue;
+                            IsDeprecated = kvp.Value.IsDeprecated
+                        });
                     }
 
-                    foreach (string pattern in entry.FileMatch)
+                    #region SchemaStore Catalog
+
+                    private static async Task LoadCatalogAsync()
                     {
-                        if (MatchesGlobPattern(name, fullPath, pattern))
-                        {
-                            return entry.Url;
-                        }
-                            }
-                        }
-
-                        return null;
-                    }
-
-                    /// <summary>
-                    /// Matches a filename against a glob pattern using Microsoft.Extensions.FileSystemGlobbing.
-                    /// </summary>
-                    private static bool MatchesGlobPattern(string fileName, string fullPath, string pattern)
-                    {
-                        if (string.IsNullOrEmpty(pattern))
-                        {
-                            return false;
-                        }
-
                         try
                         {
-                            var matcher = new Matcher(System.StringComparison.OrdinalIgnoreCase);
-                            matcher.AddInclude(pattern);
+                            Directory.CreateDirectory(CacheDirectory);
 
-                            // Try matching against the full path first
-                            string directory = System.IO.Path.GetDirectoryName(fullPath) ?? ".";
-                            var directoryInfo = new InMemoryDirectoryInfo(directory, new[] { fullPath });
-                            var result = matcher.Execute(directoryInfo);
+                            string json = null;
 
-                            if (result.HasMatches)
+                            // Try to load from cache first
+                            if (IsCacheValid(CatalogCacheFile))
                             {
-                                return true;
+                                json = File.ReadAllText(CatalogCacheFile);
+                            }
+                            else
+                            {
+                                // Download fresh catalog
+                                json = await HttpClient.GetStringAsync(SchemaStoreCatalogUrl);
+                                File.WriteAllText(CatalogCacheFile, json);
                             }
 
-                            // Also try matching against just the filename for patterns like "pyproject.toml"
-                            var fileOnlyInfo = new InMemoryDirectoryInfo(".", new[] { fileName });
-                            result = matcher.Execute(fileOnlyInfo);
+                            var catalog = JsonConvert.DeserializeObject<SchemaStoreCatalog>(json);
 
-                            return result.HasMatches;
+                            if (catalog?.Schemas != null)
+                            {
+                                // Filter to only TOML-related schemas
+                                lock (_catalogLock)
+                                {
+                                    _catalogEntries = catalog.Schemas
+                                        .Where(s => s.FileMatch != null && s.FileMatch.Any(f => f.EndsWith(".toml")))
+                                        .ToList();
+                                }
+                            }
                         }
                         catch
                         {
-                            // Fall back to simple comparison
-                            return fileName.Equals(pattern, System.StringComparison.OrdinalIgnoreCase) ||
-                                   fileName.Equals(System.IO.Path.GetFileName(pattern), System.StringComparison.OrdinalIgnoreCase);
+                            // If download fails, try to use old cached catalog
+                            if (File.Exists(CatalogCacheFile))
+                            {
+                                try
+                                {
+                                    string json = File.ReadAllText(CatalogCacheFile);
+                                    var catalog = JsonConvert.DeserializeObject<SchemaStoreCatalog>(json);
+                                    if (catalog?.Schemas != null)
+                                    {
+                                        lock (_catalogLock)
+                                        {
+                                            _catalogEntries = catalog.Schemas
+                                                .Where(s => s.FileMatch != null && s.FileMatch.Any(f => f.EndsWith(".toml")))
+                                                .ToList();
+                                        }
+                                        return;
+                                    }
+                                }
+                                catch
+                                {
+                                    // Ignore cache read errors
+                                }
+                            }
+
+                            // Catalog loading failed - continue without catalog support
+                            _catalogEntries = new List<SchemaStoreCatalogEntry>();
                         }
                     }
 
-                    private class SchemaStoreCatalog
+                    private static async Task EnsureCatalogLoadedAsync()
                     {
-                        [JsonProperty("schemas")]
-                            public List<SchemaStoreCatalogEntry> Schemas { get; set; }
+                        if (_catalogLoadTask != null)
+                        {
+                            await _catalogLoadTask;
                         }
-
-                        #endregion
-
-            private static async Task<JsonSchema> LoadSchemaAsync(string url)
-            {
-                try
-                {
-                    if (url.StartsWith("file://", System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        string filePath = new System.Uri(url).LocalPath;
-                        return await JsonSchema.FromFileAsync(filePath);
                     }
-                    else
-                    {
-                        return await JsonSchema.FromUrlAsync(url);
-                }
-            }
-            catch
-            {
-                return null;
-            }
-        }
 
-        private static JsonSchemaProperty GetPropertyAtPath(JsonSchema schema, string path)
-        {
-            if (schema == null || string.IsNullOrEmpty(path))
-            {
-                return null;
+                    private static string FindSchemaInCatalog(string fileName)
+                    {
+                                if (_catalogEntries == null || string.IsNullOrEmpty(fileName))
+                                {
+                                    return null;
+                                }
+
+                        // Get just the filename without path
+                        string name = Path.GetFileName(fileName);
+                        // Also get the full path for patterns that include directory matching
+                        string fullPath = fileName.Replace("\\", "/");
+
+                        foreach (var entry in _catalogEntries)
+                        {
+                            if (entry.FileMatch == null)
+                            {
+                                continue;
+                            }
+
+                            foreach (string pattern in entry.FileMatch)
+                            {
+                                if (MatchesGlobPattern(name, fullPath, pattern))
+                                {
+                                    return entry.Url;
+                                }
+                                    }
+                                }
+
+                                return null;
+                            }
+
+                            /// <summary>
+                                            /// Matches a filename against a glob pattern using Microsoft.Extensions.FileSystemGlobbing.
+                                    /// </summary>
+                                    private static bool MatchesGlobPattern(string fileName, string fullPath, string pattern)
+                                    {
+                                        if (string.IsNullOrEmpty(pattern))
+                                        {
+                                            return false;
+                                        }
+
+                                        try
+                                        {
+                                            var matcher = new Matcher(StringComparison.OrdinalIgnoreCase);
+                                            matcher.AddInclude(pattern);
+
+                                            // Try matching against the full path first
+                                            string directory = Path.GetDirectoryName(fullPath) ?? ".";
+                                            var directoryInfo = new InMemoryDirectoryInfo(directory, new[] { fullPath });
+                                            var result = matcher.Execute(directoryInfo);
+
+                                            if (result.HasMatches)
+                                            {
+                                                return true;
+                                            }
+
+                                            // Also try matching against just the filename for patterns like "pyproject.toml"
+                                            var fileOnlyInfo = new InMemoryDirectoryInfo(".", new[] { fileName });
+                                            result = matcher.Execute(fileOnlyInfo);
+
+                                            return result.HasMatches;
+                                        }
+                                        catch
+                                        {
+                                            // Fall back to simple comparison
+                                            return fileName.Equals(pattern, StringComparison.OrdinalIgnoreCase) ||
+                                                   fileName.Equals(Path.GetFileName(pattern), StringComparison.OrdinalIgnoreCase);
+                                        }
+                                    }
+
+                                    private class SchemaStoreCatalog
+                                    {
+                                        [JsonProperty("schemas")]
+                                            public List<SchemaStoreCatalogEntry> Schemas { get; set; }
+                                        }
+
+                                        #endregion
+
+                            private static async Task<JsonSchema> LoadSchemaAsync(string url)
+                            {
+                                try
+                                {
+                                    if (url.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        string filePath = new Uri(url).LocalPath;
+                                        return await JsonSchema.FromFileAsync(filePath);
+                                    }
+                                    else
+                                    {
+                                        return await JsonSchema.FromUrlAsync(url);
+                                    }
+                                }
+                                catch
+                                {
+                                    return null;
+                                }
+                            }
+
+                            private static JsonSchemaProperty GetPropertyAtPath(JsonSchema schema, string path)
+                            {
+                                if (schema == null || string.IsNullOrEmpty(path))
+                                {
+                                    return null;
             }
 
             string[] parts = path.Split('.');
@@ -495,6 +738,16 @@ namespace TomlEditor.Schema
         public string Property { get; set; }
         public string Message { get; set; }
         public NJsonSchema.Validation.ValidationErrorKind Kind { get; set; }
+    }
+
+    /// <summary>
+    /// Represents navigation information to a schema definition.
+    /// </summary>
+    public class SchemaNavigationInfo
+    {
+        public string FilePath { get; set; }
+        public int LineNumber { get; set; }
+        public string PropertyPath { get; set; }
     }
 
     /// <summary>

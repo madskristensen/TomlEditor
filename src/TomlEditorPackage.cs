@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell.Interop;
+using TomlEditor.Commands;
 
 namespace TomlEditor
 {
@@ -35,8 +36,9 @@ namespace TomlEditor
             RegisterEditorFactory(language);
             ((IServiceContainer)this).AddService(typeof(LanguageFactory), language, true);
 
-            await Commenting.InitializeAsync();
-            await Formatting.InitializeAsync();
-        }
-    }
-}
+                        await Commenting.InitializeAsync();
+                        await Formatting.InitializeAsync();
+                        await GoToDefinitionCommand.InitializeAsync();
+                    }
+                }
+            }
