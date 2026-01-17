@@ -210,6 +210,7 @@ namespace TomlEditor.Schema
                 // Get key completions from schema
                 IEnumerable<SchemaCompletion> completions = await _schemaService.GetCompletionsAsync(documentText, context.TablePath, fileName);
                 HashSet<string> existingKeys = GetExistingKeys(document, context.TablePath);
+                HashSet<string> existingTables = GetExistingTableNames(document);
 
                 foreach (SchemaCompletion completion in completions)
                 {
@@ -219,9 +220,36 @@ namespace TomlEditor.Schema
                         continue;
                     }
 
-                    ImageElement icon = completion.IsDeprecated ? DeprecatedIcon : KeyIcon;
-                    string displayText = completion.IsDeprecated ? $"{completion.Key} (deprecated)" : completion.Key;
-                    string insertText = completion.Key;
+                    // For tables at root level, also skip if the table already exists
+                    if (completion.IsTable && string.IsNullOrEmpty(context.TablePath) && existingTables.Contains(completion.Key))
+                    {
+                        continue;
+                    }
+
+                    // Use TableIcon for table completions, otherwise KeyIcon
+                    ImageElement icon = completion.IsDeprecated ? DeprecatedIcon : (completion.IsTable ? TableIcon : KeyIcon);
+
+                    // For tables, show with brackets in display and include type info
+                    string displayText;
+                    if (completion.IsTable)
+                    {
+                        displayText = completion.IsDeprecated ? $"[{completion.Key}] (deprecated)" : $"[{completion.Key}]";
+                    }
+                    else
+                    {
+                        displayText = completion.IsDeprecated ? $"{completion.Key} (deprecated)" : completion.Key;
+                    }
+
+                    // For tables at root level, insert with brackets
+                    string insertText;
+                    if (completion.IsTable && string.IsNullOrEmpty(context.TablePath))
+                    {
+                        insertText = $"[{completion.Key}]";
+                    }
+                    else
+                    {
+                        insertText = completion.Key;
+                    }
 
                     var item = new CompletionItem(
                         displayText,
@@ -230,13 +258,14 @@ namespace TomlEditor.Schema
                         ImmutableArray<CompletionFilter>.Empty,
                         string.Empty,
                         insertText,
-                        insertText,
-                        insertText,
+                        completion.Key, // Sort text - use key without brackets for proper alphabetical sort
+                        completion.Key, // Filter text - use key without brackets for filtering
                         ImmutableArray<ImageElement>.Empty);
 
                     item.Properties.AddProperty("Description", completion.Description ?? string.Empty);
                     item.Properties.AddProperty("Type", completion.Type ?? string.Empty);
                     item.Properties.AddProperty("IsDeprecated", completion.IsDeprecated);
+                    item.Properties.AddProperty("IsTable", completion.IsTable);
 
                     items.Add(item);
                 }

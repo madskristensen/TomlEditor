@@ -402,12 +402,26 @@ namespace TomlEditor.Schema
                         return Enumerable.Empty<SchemaCompletion>();
                     }
 
-                    return targetSchema.ActualProperties.Select(kvp => new SchemaCompletion
+                    return targetSchema.ActualProperties.Select(kvp =>
                     {
-                        Key = kvp.Key,
-                        Description = kvp.Value.Description,
-                        Type = GetTypeString(kvp.Value),
-                        IsDeprecated = kvp.Value.IsDeprecated
+                        var actualSchema = kvp.Value.ActualSchema;
+
+                        // Check if this property represents a table (object type)
+                        bool isTable = actualSchema?.Type == JsonObjectType.Object ||
+                                       actualSchema?.ActualProperties?.Count > 0;
+
+                        // Check if this property represents an array of tables
+                        bool isArrayOfTables = actualSchema?.Type == JsonObjectType.Array &&
+                                               actualSchema?.Item?.ActualProperties?.Count > 0;
+
+                        return new SchemaCompletion
+                        {
+                            Key = kvp.Key,
+                            Description = kvp.Value.Description,
+                            Type = GetTypeString(kvp.Value),
+                            IsDeprecated = kvp.Value.IsDeprecated,
+                            IsTable = isTable || isArrayOfTables
+                        };
                     });
                 }
 
