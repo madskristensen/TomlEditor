@@ -15,7 +15,8 @@ namespace TomlEditor
     [BracePair('*', '*')]
     [ContentType(Constants.LanguageName)]
     [ProvideBraceCompletion(Constants.LanguageName)]
-    internal sealed class BraceCompletion : BraceCompletionBase
+    [Name(nameof(TomlBraceCompletion))]
+    internal sealed class TomlBraceCompletion : BraceCompletionBase
     {
     }
 }

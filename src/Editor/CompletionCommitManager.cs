@@ -11,7 +11,8 @@ namespace TomlEditor
     /// </summary>
     [Export(typeof(IAsyncCompletionCommitManagerProvider))]
     [ContentType(Constants.LanguageName)]
-    internal sealed class CompletionCommitManager : CompletionCommitManagerBase
+    [Name(nameof(TomlCompletionCommitManager))]
+    internal sealed class TomlCompletionCommitManager : CompletionCommitManagerBase
     {
         // '=' is NOT included - let it type naturally, then user presses Ctrl+Space for value completion
         public override IEnumerable<char> CommitChars => ['\t', ' ', '\'', '"', ',', '.', ';', ':', '\\', '$', '\n', '['];
