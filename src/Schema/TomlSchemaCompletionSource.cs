@@ -72,20 +72,36 @@ namespace TomlEditor.Schema
                 // Table header completion - find start of table name after [ or [[
                 var bracketStart = textBeforeCaret.LastIndexOf('[');
                 var tableNameStart = bracketStart + 1;
+                var isArrayTable = false;
 
                 // Skip second bracket for array tables [[
                 if (bracketStart > 0 && textBeforeCaret[bracketStart - 1] == '[')
                 {
                     // Already handled by LastIndexOf finding the second [
+                    isArrayTable = true;
                 }
                 else if (bracketStart + 1 < textBeforeCaret.Length && textBeforeCaret[bracketStart + 1] == '[')
                 {
                     tableNameStart = bracketStart + 2;
+                    isArrayTable = true;
+                }
+
+                // Check if there's already a closing bracket after the caret and extend the span to include it
+                var textAfterCaret = column < lineText.Length ? lineText.Substring(column) : string.Empty;
+                var spanEnd = triggerLocation;
+
+                if (isArrayTable && textAfterCaret.StartsWith("]]"))
+                {
+                    spanEnd = triggerLocation + 2;
+                }
+                else if (textAfterCaret.StartsWith("]"))
+                {
+                    spanEnd = triggerLocation + 1;
                 }
 
                 return new CompletionStartData(
                     CompletionParticipation.ProvidesItems,
-                    new SnapshotSpan(line.Start + tableNameStart, triggerLocation));
+                    new SnapshotSpan(line.Start + tableNameStart, spanEnd));
             }
 
             // Check if we're after an '=' sign (value position)

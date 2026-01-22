@@ -12,7 +12,7 @@ namespace TomlEditor
         public const string Name = "TOML Editor";
         public const string Description = @"TOML language support for Visual Studio with syntax highlighting, validation, outlining, and more...";
         public const string Language = "en-US";
-        public const string Version = "1.0.901";
+        public const string Version = "1.0.902";
         public const string Author = "Mads Kristensen";
         public const string Tags = "toml, json";
         public const bool IsPreview = false;
