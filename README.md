@@ -1,10 +1,11 @@
-[marketplace]: https://marketplace.visualstudio.com/items?itemName=MadsKristensen.TomlEditor
-[vsixgallery]: http://vsixgallery.com/extension/TomlEditor.4e804652-a783-473b-827f-6e41f5a48b9b/
-[repo]:https://github.com/madskristensen/TomlEditor
+[marketplace]: <https://marketplace.visualstudio.com/items?itemName=MadsKristensen.TomlEditor>
+[vsixgallery]: <http://vsixgallery.com/extension/TomlEditor.4e804652-a783-473b-827f-6e41f5a48b9b/>
+[repo]:<https://github.com/madskristensen/TomlEditor>
 
 # TOML Editor for Visual Studio
 
 [![Build](https://github.com/madskristensen/TomlEditor/actions/workflows/build.yaml/badge.svg)](https://github.com/madskristensen/TomlEditor/actions/workflows/build.yaml)
+![GitHub Sponsors](https://img.shields.io/github/sponsors/madskristensen)
 
 **First-class TOML support in Visual Studio** — edit your configuration files with confidence.
 
@@ -17,7 +18,8 @@
 ✅ **Syntax Highlighting** — Beautiful colorization for keys, values, tables, and comments  
 ✅ **Real-time Validation** — Catch errors as you type with instant feedback  
 ✅ **Navigation Bar** — Jump to tables and sections using the editor dropdowns  
-✅ **Code Outlining** — Collapse and expand sections for easier navigation  
+✅ **Document Outline** — View and navigate your document structure in the Document Outline window  
+✅ **Code Outlining** — Collapse and expand sections for easier navigation
 ✅ **Commenting** — Toggle comments with `Ctrl+/` or `Ctrl+K, Ctrl+C`  
 ✅ **Formatting** — Format Document (`Ctrl+K, Ctrl+D`) and Format Selection  
 ✅ **Smart Indentation** — Automatic indentation when pressing Enter  
@@ -48,6 +50,18 @@ Errors are detected and underlined as you type. Hover over any error to see a de
 Use the dropdown menus at the top of the editor to quickly jump between tables and sections in your document. The left dropdown shows the document structure, and the right dropdown shows the current section's contents.
 
 ![Navigation Bar](art/dropdowns.png)
+
+### Document Outline
+
+Open the Document Outline window (**View > Other Windows > Document Outline**) to see a hierarchical tree view of your TOML document. The outline displays:
+
+- **Tables** — shown in bold with nested table hierarchy preserved
+- **Array of Tables** — clearly distinguished from regular tables
+- **Key-Value Pairs** — shown under their parent tables
+
+Double-click any item to navigate directly to it in the editor. The outline automatically updates as you edit and syncs with your cursor position.
+
+![Document outline](art/document-outline.png)
 
 ### Code Outlining
 
@@ -84,6 +98,7 @@ The extension provides schema-based validation and IntelliSense for TOML files.
 Schemas are **automatically detected** for well-known TOML files using the [SchemaStore.org](https://www.schemastore.org/json/) catalog. Just open a file and it works!
 
 Supported files include:
+
 - `pyproject.toml` — Python project configuration
 - `Cargo.toml` — Rust package manifest
 - `.rustfmt.toml` / `rustfmt.toml` — Rust formatter configuration
@@ -104,7 +119,8 @@ command = ["cargo", "check"]
 ```
 
 You can use:
-- **HTTPS URLs** — `https://json.schemastore.org/pyproject.json`
+
+- **HTTPS URLs** — `<https://json.schemastore.org/pyproject.json`>
 - **Local files** — `file:///C:/schemas/my-schema.json`
 
 ### IntelliSense
