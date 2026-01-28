@@ -25,6 +25,10 @@
     {
       "pathOnDisk": "art/quick-info.png",
       "targetPath": "art/quick-info.png"
+    },
+    {
+      "pathOnDisk": "art/document-outline.png",
+      "targetPath": "art/document-outline.png"
     }
   ],
   "overview": "README.md",
