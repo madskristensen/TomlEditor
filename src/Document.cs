@@ -2,7 +2,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Threading;
-using Tomlyn;
+using Tomlyn.Parsing;
 using Tomlyn.Syntax;
 
 namespace TomlEditor
@@ -60,7 +60,7 @@ namespace TomlEditor
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var text = _buffer.CurrentSnapshot.GetText();
-                DocumentSyntax model = Toml.Parse(text, FileName, TomlParserOptions.ParseAndValidate);
+                DocumentSyntax model = SyntaxParser.Parse(text, FileName, validate: true);
 
                 cancellationToken.ThrowIfCancellationRequested();
 

@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Text;
-using Tomlyn;
+using Tomlyn.Parsing;
 using Tomlyn.Syntax;
 using TomlEditor.Commands;
 
@@ -69,7 +69,7 @@ namespace TomlEditor
         private static string FormatToml(string text)
         {
             // First validate the TOML is parseable
-            DocumentSyntax doc = Toml.Parse(text, options: TomlParserOptions.ParseAndValidate);
+            DocumentSyntax doc = SyntaxParser.Parse(text, validate: true);
 
             if (doc.HasErrors)
             {

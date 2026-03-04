@@ -331,7 +331,7 @@ namespace TomlEditor.Schema
             try
             {
                 // Parse TOML to model and convert to JSON
-                TomlTable tomlModel = Toml.ToModel(tomlText);
+                TomlTable tomlModel = TomlSerializer.Deserialize<TomlTable>(tomlText);
                 var json = JsonConvert.SerializeObject(tomlModel);
 
                 // Validate JSON against schema
