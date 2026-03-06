@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -20,6 +21,8 @@ namespace TomlEditor.Schema
     /// </summary>
     public class TomlSchemaService
     {
+        public static TomlSchemaService Shared { get; } = new();
+
         private const string _schemaStoreCatalogUrl = "https://www.schemastore.org/api/json/catalog.json";
         private static readonly TimeSpan _cacheExpiration = TimeSpan.FromDays(7);
         private static readonly string _cacheDirectory = Path.Combine(Path.GetTempPath(), "TomlEditor", "Schemas");
@@ -183,8 +186,10 @@ namespace TomlEditor.Schema
 
                 return cachedFilePath;
             }
-            catch
+            catch (Exception ex)
             {
+                LogException("Failed to cache schema file", ex);
+
                 // If download fails but we have an old cached file, use it anyway
                 if (File.Exists(cachedFilePath))
                 {
@@ -271,9 +276,9 @@ namespace TomlEditor.Schema
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore errors in line finding
+                LogException("Failed to find property line in schema", ex);
             }
 
             return 1; // Default to first line
@@ -523,8 +528,10 @@ namespace TomlEditor.Schema
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                LogException("Failed to load schema catalog", ex);
+
                 // If download fails, try to use old cached catalog
                 if (File.Exists(_catalogCacheFile))
                 {
@@ -541,9 +548,9 @@ namespace TomlEditor.Schema
                             return;
                         }
                     }
-                    catch
+                    catch (Exception cacheEx)
                     {
-                        // Ignore cache read errors
+                        LogException("Failed to load cached schema catalog", cacheEx);
                     }
                 }
 
@@ -622,8 +629,10 @@ namespace TomlEditor.Schema
 
                 return result.HasMatches;
             }
-            catch
+            catch (Exception ex)
             {
+                LogException($"Failed to match glob pattern '{pattern}'", ex);
+
                 // Fall back to simple comparison
                 return fileName.Equals(pattern, StringComparison.OrdinalIgnoreCase) ||
                        fileName.Equals(Path.GetFileName(pattern), StringComparison.OrdinalIgnoreCase);
@@ -652,10 +661,16 @@ namespace TomlEditor.Schema
                     return await JsonSchema.FromUrlAsync(url);
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                LogException($"Failed to load schema from '{url}'", ex);
                 return null;
             }
+        }
+
+        private static void LogException(string context, Exception ex)
+        {
+            Trace.TraceWarning($"[TomlEditor.Schema] {context}: {ex.Message}");
         }
 
         private static JsonSchemaProperty GetPropertyAtPath(JsonSchema schema, string path)

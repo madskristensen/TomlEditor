@@ -27,7 +27,7 @@ namespace TomlEditor.Schema
     internal sealed class SchemaQuickInfoSource : IAsyncQuickInfoSource
     {
         private readonly ITextBuffer _buffer;
-        private readonly TomlSchemaService _schemaService = new();
+        private readonly TomlSchemaService _schemaService = TomlSchemaService.Shared;
 
         public SchemaQuickInfoSource(ITextBuffer buffer)
         {

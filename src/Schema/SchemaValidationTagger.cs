@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Adornments;
@@ -27,8 +28,9 @@ namespace TomlEditor.Schema
     {
         private readonly ITextBuffer _buffer;
         private readonly Document _document;
-        private readonly TomlSchemaService _schemaService = new();
+        private readonly TomlSchemaService _schemaService = TomlSchemaService.Shared;
         private List<ITagSpan<IErrorTag>> _errorTags = [];
+        private CancellationTokenSource _validationCts;
         private bool _isDisposed;
 
         public event EventHandler<SnapshotSpanEventArgs> TagsChanged;
@@ -46,18 +48,34 @@ namespace TomlEditor.Schema
 
         private void OnDocumentParsed(Document document)
         {
-            _ = ValidateAsync();
+            lock (this)
+            {
+                _validationCts?.Cancel();
+                _validationCts?.Dispose();
+                _validationCts = new CancellationTokenSource();
+                _ = ValidateAsync(_validationCts.Token);
+            }
         }
 
-        private async Task ValidateAsync()
+        private async Task ValidateAsync(CancellationToken cancellationToken)
         {
             var errors = new List<ITagSpan<IErrorTag>>();
             ITextSnapshot snapshot = _buffer.CurrentSnapshot;
             var text = snapshot.GetText();
             var fileName = _document?.FileName;
 
-            // Use NJsonSchema for validation (handles both directive and catalog matching)
-            IList<SchemaValidationError> validationErrors = await _schemaService.ValidateAsync(text, fileName);
+            IList<SchemaValidationError> validationErrors;
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                // Use NJsonSchema for validation (handles both directive and catalog matching)
+                validationErrors = await _schemaService.ValidateAsync(text, fileName);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
 
             foreach (SchemaValidationError error in validationErrors)
             {
@@ -275,6 +293,9 @@ namespace TomlEditor.Schema
                 {
                     _document.Parsed -= OnDocumentParsed;
                 }
+
+                _validationCts?.Cancel();
+                _validationCts?.Dispose();
 
                 _isDisposed = true;
             }

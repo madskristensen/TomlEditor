@@ -11,7 +11,7 @@ namespace TomlEditor.Commands
     /// </summary>
     public class GoToDefinitionCommand
     {
-        private static readonly TomlSchemaService _schemaService = new();
+        private static readonly TomlSchemaService _schemaService = TomlSchemaService.Shared;
 
         public static async Task InitializeAsync()
         {

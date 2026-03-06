@@ -34,7 +34,7 @@ namespace TomlEditor.Schema
         private static readonly ImageElement _valueIcon = new(KnownMonikers.EnumerationItemPublic.ToImageId(), "Value");
         private static readonly ImageElement _tableIcon = new(KnownMonikers.TableGroup.ToImageId(), "Table");
         private static readonly ImageElement _deprecatedIcon = new(KnownMonikers.StatusWarning.ToImageId(), "Deprecated");
-        private readonly TomlSchemaService _schemaService = new();
+        private readonly TomlSchemaService _schemaService = TomlSchemaService.Shared;
 
         public CompletionStartData InitializeCompletion(CompletionTrigger trigger, SnapshotPoint triggerLocation, CancellationToken token)
         {
@@ -143,6 +143,8 @@ namespace TomlEditor.Schema
             SnapshotSpan applicableToSpan,
             CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
+
             var documentText = textView.TextBuffer.CurrentSnapshot.GetText();
             Document document = textView.TextBuffer.GetDocument();
             var fileName = document?.FileName;
@@ -154,6 +156,7 @@ namespace TomlEditor.Schema
             {
                 // Get table name completions from schema
                 IEnumerable<SchemaCompletion> completions = await _schemaService.GetTableCompletionsAsync(documentText, context.PartialTableName, fileName);
+                token.ThrowIfCancellationRequested();
                 HashSet<string> existingTables = GetExistingTableNames(document);
 
                 foreach (SchemaCompletion completion in completions)
@@ -211,6 +214,7 @@ namespace TomlEditor.Schema
                     : $"{context.TablePath}.{context.CurrentKey}";
 
                 SchemaPropertyInfo propInfo = await _schemaService.GetPropertyInfoAsync(documentText, propertyPath, fileName);
+                token.ThrowIfCancellationRequested();
 
                 if (propInfo != null)
                 {
@@ -239,6 +243,7 @@ namespace TomlEditor.Schema
             {
                 // Get key completions from schema
                 IEnumerable<SchemaCompletion> completions = await _schemaService.GetCompletionsAsync(documentText, context.TablePath, fileName);
+                token.ThrowIfCancellationRequested();
                 HashSet<string> existingKeys = GetExistingKeys(document, context.TablePath);
                 HashSet<string> existingTables = GetExistingTableNames(document);
 

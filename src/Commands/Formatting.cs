@@ -14,6 +14,11 @@ namespace TomlEditor
     /// </summary>
     public class Formatting
     {
+        private static readonly Regex KeyValuePattern = new(@"^(\s*)([^#=\[\]]+?)\s*=\s*(.*)$", RegexOptions.Compiled);
+        private static readonly Regex TablePattern = new(@"^\s*\[([^\[\]]+)\]\s*$", RegexOptions.Compiled);
+        private static readonly Regex ArrayTablePattern = new(@"^\s*\[\[([^\[\]]+)\]\]\s*$", RegexOptions.Compiled);
+        private const string IndentUnit = "  ";
+
         public static async Task InitializeAsync()
         {
             // Intercept the formatting commands for TOML files
@@ -88,13 +93,9 @@ namespace TomlEditor
         {
             var lines = text.Split(["\r\n", "\r", "\n"], StringSplitOptions.None);
             var formatted = new StringBuilder();
-            var keyValuePattern = new Regex(@"^(\s*)([^#=\[\]]+?)\s*=\s*(.*)$");
-            var tablePattern = new Regex(@"^\s*\[([^\[\]]+)\]\s*$");
-            var arrayTablePattern = new Regex(@"^\s*\[\[([^\[\]]+)\]\]\s*$");
 
             var currentTablePath = string.Empty;
             var currentIndentLevel = 0;
-            var indentUnit = "  "; // 2 spaces per level
 
             for (var i = 0; i < lines.Length; i++)
             {
@@ -103,13 +104,13 @@ namespace TomlEditor
                 var trimmedStart = trimmed.TrimStart();
 
                 // Check for array table header [[table]]
-                Match arrayTableMatch = arrayTablePattern.Match(trimmed);
+                Match arrayTableMatch = ArrayTablePattern.Match(trimmed);
                 if (arrayTableMatch.Success)
                 {
                     var tablePath = arrayTableMatch.Groups[1].Value.Trim();
                     var indentLevel = GetTableIndentLevel(tablePath, ref currentTablePath);
                     currentIndentLevel = indentLevel;
-                    var indent = new string(' ', indentLevel * indentUnit.Length);
+                    var indent = new string(' ', indentLevel * IndentUnit.Length);
 
                     // Add blank line before table if not at start and previous line is not blank
                     if (formatted.Length > 0 && !EndsWithBlankLine(formatted))
@@ -120,12 +121,12 @@ namespace TomlEditor
                     trimmed = $"{indent}[[{tablePath}]]";
                 }
                 // Check for table header [table]
-                else if (tablePattern.Match(trimmed) is Match tableMatch && tableMatch.Success)
+                else if (TablePattern.Match(trimmed) is Match tableMatch && tableMatch.Success)
                 {
                     var tablePath = tableMatch.Groups[1].Value.Trim();
                     var indentLevel = GetTableIndentLevel(tablePath, ref currentTablePath);
                     currentIndentLevel = indentLevel;
-                    var indent = new string(' ', indentLevel * indentUnit.Length);
+                    var indent = new string(' ', indentLevel * IndentUnit.Length);
 
                     // Add blank line before table if not at start and previous line is not blank
                     if (formatted.Length > 0 && !EndsWithBlankLine(formatted))
@@ -136,18 +137,18 @@ namespace TomlEditor
                     trimmed = $"{indent}[{tablePath}]";
                 }
                 // Format key-value pairs
-                else if (!trimmedStart.StartsWith("#") && keyValuePattern.Match(trimmed) is Match kvMatch && kvMatch.Success)
+                else if (!trimmedStart.StartsWith("#") && KeyValuePattern.Match(trimmed) is Match kvMatch && kvMatch.Success)
                 {
                     var key = kvMatch.Groups[2].Value.Trim();
                     var value = kvMatch.Groups[3].Value;
-                    var indent = new string(' ', currentIndentLevel * indentUnit.Length);
+                    var indent = new string(' ', currentIndentLevel * IndentUnit.Length);
 
                     trimmed = $"{indent}{key} = {value}";
                 }
                 // Preserve comments and blank lines with appropriate indentation
                 else if (trimmedStart.StartsWith("#"))
                 {
-                    var indent = new string(' ', currentIndentLevel * indentUnit.Length);
+                    var indent = new string(' ', currentIndentLevel * IndentUnit.Length);
                     trimmed = $"{indent}{trimmedStart}";
                 }
                 // Blank lines - keep as is
@@ -228,10 +229,20 @@ namespace TomlEditor
                 return false;
             }
 
-            // Check for \r\n\r\n or \n\n at the end
-            var str = sb.ToString();
-            return str.EndsWith("\r\n\r\n") || str.EndsWith("\n\n") || 
-                   str.EndsWith("\r\n") && str.Length >= 4 && str[str.Length - 3] == '\n';
+            var last = sb[sb.Length - 1];
+            var secondLast = sb[sb.Length - 2];
+
+            if (last == '\n' && secondLast == '\n')
+            {
+                return true;
+            }
+
+            if (sb.Length >= 4 && last == '\n' && secondLast == '\r' && sb[sb.Length - 3] == '\n' && sb[sb.Length - 4] == '\r')
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private static void ReplaceAllText(ITextBuffer buffer, string newText)
