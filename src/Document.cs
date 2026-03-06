@@ -9,8 +9,6 @@ namespace TomlEditor
 {
     public class Document : IDisposable
     {
-        private static readonly TimeSpan ParseDelay = TimeSpan.FromMilliseconds(300);
-
         private readonly ITextBuffer _buffer;
         private readonly object _parseLock = new();
         private CancellationTokenSource _parseCts;
@@ -54,7 +52,6 @@ namespace TomlEditor
 
             try
             {
-                await Task.Delay(ParseDelay, cancellationToken);
                 await TaskScheduler.Default; // move to a background thread
 
                 cancellationToken.ThrowIfCancellationRequested();
