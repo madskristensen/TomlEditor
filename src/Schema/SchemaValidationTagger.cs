@@ -26,6 +26,7 @@ namespace TomlEditor.Schema
 
     internal sealed class SchemaValidationTagger : ITagger<IErrorTag>, IDisposable
     {
+        private static readonly TimeSpan _validationDebounceDelay = TimeSpan.FromMilliseconds(200);
         private readonly ITextBuffer _buffer;
         private readonly Document _document;
         private readonly TomlSchemaService _schemaService = TomlSchemaService.Shared;
@@ -53,7 +54,20 @@ namespace TomlEditor.Schema
                 _validationCts?.Cancel();
                 _validationCts?.Dispose();
                 _validationCts = new CancellationTokenSource();
-                _ = ValidateAsync(_validationCts.Token);
+                _ = ScheduleValidationAsync(_validationCts.Token);
+            }
+        }
+
+        private async Task ScheduleValidationAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                await Task.Delay(_validationDebounceDelay, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                await ValidateAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
             }
         }
 
@@ -274,10 +288,117 @@ namespace TomlEditor.Schema
 
         private void UpdateTags(List<ITagSpan<IErrorTag>> newTags)
         {
+            List<ITagSpan<IErrorTag>> oldTags = _errorTags;
+            if (AreTagSetsEqual(oldTags, newTags))
+            {
+                return;
+            }
+
             _errorTags = newTags;
 
-            TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(
-                new SnapshotSpan(_buffer.CurrentSnapshot, 0, _buffer.CurrentSnapshot.Length)));
+            SnapshotSpan changedSpan = GetChangedSpan(oldTags, newTags, _buffer.CurrentSnapshot);
+            TagsChanged?.Invoke(this, new SnapshotSpanEventArgs(changedSpan));
+        }
+
+        private static bool AreTagSetsEqual(IReadOnlyList<ITagSpan<IErrorTag>> left, IReadOnlyList<ITagSpan<IErrorTag>> right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
+            if (left == null || right == null || left.Count != right.Count)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < left.Count; i++)
+            {
+                SnapshotSpan leftSpan = left[i].Span;
+                SnapshotSpan rightSpan = right[i].Span;
+
+                if (leftSpan.Start.Position != rightSpan.Start.Position || leftSpan.Length != rightSpan.Length)
+                {
+                    return false;
+                }
+
+                if (!AreTagsEqual(left[i].Tag, right[i].Tag))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool AreTagsEqual(IErrorTag left, IErrorTag right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
+            if (left == null || right == null)
+            {
+                return false;
+            }
+
+            if (!string.Equals(left.ErrorType, right.ErrorType, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            var leftTooltip = left.ToolTipContent?.ToString() ?? string.Empty;
+            var rightTooltip = right.ToolTipContent?.ToString() ?? string.Empty;
+            return string.Equals(leftTooltip, rightTooltip, StringComparison.Ordinal);
+        }
+
+        private static SnapshotSpan GetChangedSpan(
+            IReadOnlyList<ITagSpan<IErrorTag>> oldTags,
+            IReadOnlyList<ITagSpan<IErrorTag>> newTags,
+            ITextSnapshot snapshot)
+        {
+            var minStart = int.MaxValue;
+            var maxEnd = 0;
+
+            IncludeBounds(oldTags, snapshot, ref minStart, ref maxEnd);
+            IncludeBounds(newTags, snapshot, ref minStart, ref maxEnd);
+
+            if (minStart == int.MaxValue)
+            {
+                return new SnapshotSpan(snapshot, 0, snapshot.Length);
+            }
+
+            return new SnapshotSpan(snapshot, minStart, Math.Max(0, maxEnd - minStart));
+        }
+
+        private static void IncludeBounds(
+            IReadOnlyList<ITagSpan<IErrorTag>> tags,
+            ITextSnapshot snapshot,
+            ref int minStart,
+            ref int maxEnd)
+        {
+            if (tags == null)
+            {
+                return;
+            }
+
+            for (var i = 0; i < tags.Count; i++)
+            {
+                SnapshotSpan span = tags[i].Span;
+                if (span.Snapshot != snapshot)
+                {
+                    span = span.TranslateTo(snapshot, SpanTrackingMode.EdgeInclusive);
+                }
+
+                if (span.Length == 0)
+                {
+                    continue;
+                }
+
+                minStart = Math.Min(minStart, span.Start.Position);
+                maxEnd = Math.Max(maxEnd, span.End.Position);
+            }
         }
 
         public IEnumerable<ITagSpan<IErrorTag>> GetTags(NormalizedSnapshotSpanCollection spans)
