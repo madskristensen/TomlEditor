@@ -25,8 +25,10 @@
 ✅ **Smart Indentation** — Automatic indentation when pressing Enter  
 ✅ **Brace Matching** — Highlights matching brackets and quotes  
 ✅ **JSON Schema Support** — Validation and IntelliSense powered by JSON Schema  
+✅ **Schema Quick Fixes** — Add missing required keys, remove unknown keys, and insert schema directive template  
 ✅ **Go to Definition** — Navigate to schema definitions with `F12`  
 ✅ **Find All References** — Find all occurrences of a key with `Shift+F12`  
+✅ **Rename Key** — Rename a TOML key in its current document scope  
 ✅ **Lightweight & Fast** — Designed for performance with zero impact on your workflow
 
 Whether you're working with Cargo.toml, pyproject.toml, or any other TOML configuration, this extension makes editing a breeze.
@@ -73,7 +75,7 @@ Toggle line comments with `Ctrl+K, Ctrl+C` (comment) and `Ctrl+K, Ctrl+U` (uncom
 
 ### Formatting
 
-Format your entire document with `Ctrl+K, Ctrl+D` or format a selection with `Ctrl+K, Ctrl+F`. The formatter normalizes whitespace and alignment for consistent, readable TOML.
+Format your entire document with `Ctrl+K, Ctrl+D` or format a selection with `Ctrl+K, Ctrl+F`. The formatter normalizes whitespace and alignment for consistent, readable TOML, and now better preserves edge cases like `=` characters inside quoted values and trailing comments.
 
 ### Smart Indentation
 
@@ -85,7 +87,11 @@ Matching brackets `[]`, `[[]]`, and quotes are highlighted when your cursor is a
 
 ### Find All References
 
-Place your cursor on any TOML key and press `Shift+F12` (or right-click and select "Find All References") to see all occurrences of that key in the document. Results appear in the Output window with line numbers for easy navigation. This works for both root-level keys and keys within tables.
+Place your cursor on any TOML key and press `Shift+F12` (or right-click and select "Find All References") to see all occurrences of that key in the document. Results appear in the Output window in a navigable format, so you can double-click a result to jump directly to the location. This works for both root-level keys and keys within tables.
+
+### Rename Key
+
+Place your cursor on a TOML key and trigger **Rename**. The extension will rename that key across its current document scope (root-level or the active table), helping keep related key usage consistent.
 
 ---
 
@@ -150,6 +156,16 @@ When a schema is available, the extension validates your TOML in real-time:
 - **Invalid enum values** — errors when a value isn't in the allowed list
 
 <!-- ![Schema Validation](art/schema-validation.png) -->
+
+### Schema Quick Fixes
+
+When schema validation is available, the extension can apply simple fixes directly in the editor:
+
+- Insert a `#:schema <url>` directive template when no schema is detected
+- Remove unknown keys reported by schema validation
+- Insert missing required key stubs
+
+Use quick actions on TOML files to apply the first available schema fix.
 
 ### Go to Definition
 

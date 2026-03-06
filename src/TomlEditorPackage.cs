@@ -35,8 +35,14 @@ namespace TomlEditor
             RegisterEditorFactory(language);
             ((IServiceContainer)this).AddService(typeof(TomLanguage), language, true);
 
+#if DEBUG
+            Formatting.RunRegressionChecks();
+#endif
+
             await Commenting.InitializeAsync();
             await Formatting.InitializeAsync();
+            await RenameKeyCommand.InitializeAsync();
+            await SchemaQuickFixCommand.InitializeAsync();
             await GoToDefinitionCommand.InitializeAsync();
             await FindAllReferencesCommand.InitializeAsync();
         }

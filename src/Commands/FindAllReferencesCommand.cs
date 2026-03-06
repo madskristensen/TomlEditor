@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Forms;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Text;
 using Tomlyn.Syntax;
@@ -46,7 +48,8 @@ namespace TomlEditor.Commands
                 }
 
                 // Find all references to this key
-                var references = FindAllKeyReferences(document, keyInfo.KeyName, keyInfo.TablePrefix);
+                ITextSnapshot snapshot = doc.TextBuffer.CurrentSnapshot;
+                var references = FindAllKeyReferences(document, keyInfo.KeyName, keyInfo.TablePrefix, snapshot);
 
                 if (references.Count == 0)
                 {
@@ -129,7 +132,7 @@ namespace TomlEditor.Commands
             return key.ToString()?.Trim();
         }
 
-        private static List<KeyReference> FindAllKeyReferences(Document document, string keyName, string tablePrefix)
+        private static List<KeyReference> FindAllKeyReferences(Document document, string keyName, string tablePrefix, ITextSnapshot snapshot)
         {
             var references = new List<KeyReference>();
 
@@ -146,7 +149,8 @@ namespace TomlEditor.Commands
                             Line = table.Name.Span.Start.Line,
                             Column = table.Name.Span.Start.Column,
                             StartOffset = table.Name.Span.Start.Offset,
-                            Length = table.Name.Span.Length
+                            Length = table.Name.Span.Length,
+                            LineText = GetLineText(snapshot, table.Name.Span.Start.Line)
                         });
                     }
                 }
@@ -166,7 +170,8 @@ namespace TomlEditor.Commands
                             Line = kvp.Key.Span.Start.Line,
                             Column = kvp.Key.Span.Start.Column,
                             StartOffset = kvp.Key.Span.Start.Offset,
-                            Length = kvp.Key.Span.Length
+                            Length = kvp.Key.Span.Length,
+                            LineText = GetLineText(snapshot, kvp.Key.Span.Start.Line)
                         });
                     }
                 }
@@ -191,14 +196,28 @@ namespace TomlEditor.Commands
                                 Line = kvp.Key.Span.Start.Line,
                                 Column = kvp.Key.Span.Start.Column,
                                 StartOffset = kvp.Key.Span.Start.Offset,
-                                Length = kvp.Key.Span.Length
+                                Length = kvp.Key.Span.Length,
+                                LineText = GetLineText(snapshot, kvp.Key.Span.Start.Line)
                             });
                         }
                     }
                 }
             }
 
-            return references;
+            return references
+                .OrderBy(r => r.Line)
+                .ThenBy(r => r.Column)
+                .ToList();
+        }
+
+        private static string GetLineText(ITextSnapshot snapshot, int lineNumber)
+        {
+            if (snapshot == null || lineNumber < 0 || lineNumber >= snapshot.LineCount)
+            {
+                return string.Empty;
+            }
+
+            return snapshot.GetLineFromLineNumber(lineNumber).GetText().Trim();
         }
 
         private static async Task ShowReferencesAsync(string fileName, string keyName, List<KeyReference> references)
@@ -222,28 +241,280 @@ namespace TomlEditor.Commands
 
             foreach (var reference in references)
             {
-                await outputWindow.WriteLineAsync($"  Line {reference.Line + 1}, Column {reference.Column + 1}");
+                var message = string.IsNullOrWhiteSpace(reference.LineText) ? keyName : reference.LineText;
+                await outputWindow.WriteLineAsync($"{fileName}({reference.Line + 1},{reference.Column + 1}): {message}");
             }
 
             await outputWindow.WriteLineAsync("");
-            await outputWindow.WriteLineAsync("(Double-click a line number to navigate)");
+            await outputWindow.WriteLineAsync("(Double-click a result line to navigate)");
             await outputWindow.ActivateAsync();
         }
 
-                private class KeyInfo
+        private class KeyInfo
+        {
+            public string KeyName { get; set; }
+            public string TablePrefix { get; set; }
+            public string DisplayName { get; set; }
+            public bool IsTableName { get; set; }
+        }
+
+        private class KeyReference
+        {
+            public int Line { get; set; }
+            public int Column { get; set; }
+            public int StartOffset { get; set; }
+            public int Length { get; set; }
+            public string LineText { get; set; }
+        }
+    }
+
+    /// <summary>
+    /// Handles Rename command for TOML keys within the current document scope.
+    /// </summary>
+    internal static class RenameKeyCommand
+    {
+        /// <summary>
+        /// Initializes the TOML rename command interceptor.
+        /// </summary>
+        public static async Task InitializeAsync()
+        {
+            await VS.Commands.InterceptAsync(VSConstants.VSStd2KCmdID.RENAME, Execute);
+        }
+
+        private static CommandProgression Execute()
+        {
+            return ThreadHelper.JoinableTaskFactory.Run(async () =>
+            {
+                DocumentView doc = await VS.Documents.GetActiveDocumentViewAsync();
+
+                if (doc?.TextBuffer == null || !doc.TextBuffer.ContentType.IsOfType(Constants.LanguageName))
                 {
-                    public string KeyName { get; set; }
-                    public string TablePrefix { get; set; }
-                    public string DisplayName { get; set; }
-                    public bool IsTableName { get; set; }
+                    return CommandProgression.Continue;
                 }
 
-                private class KeyReference
+                Document document = doc.TextBuffer.GetDocument();
+                if (document?.Model == null)
                 {
-                    public int Line { get; set; }
-                    public int Column { get; set; }
-                    public int StartOffset { get; set; }
-                    public int Length { get; set; }
+                    return CommandProgression.Continue;
+                }
+
+                var position = doc.TextView.Caret.Position.BufferPosition.Position;
+                KeyInfo keyInfo = FindKeyAtPosition(position, document);
+
+                if (keyInfo == null || string.IsNullOrEmpty(keyInfo.KeyName))
+                {
+                    await VS.StatusBar.ShowMessageAsync("No TOML key found at cursor position.");
+                    return CommandProgression.Stop;
+                }
+
+                var newName = PromptForNewName(keyInfo.KeyName);
+                if (newName == null)
+                {
+                    return CommandProgression.Stop;
+                }
+
+                if (newName == keyInfo.KeyName)
+                {
+                    return CommandProgression.Stop;
+                }
+
+                if (!IsValidKeyName(newName))
+                {
+                    await VS.StatusBar.ShowMessageAsync("Invalid key name.");
+                    return CommandProgression.Stop;
+                }
+
+                ITextSnapshot snapshot = doc.TextBuffer.CurrentSnapshot;
+                List<KeyReference> references = FindAllKeyReferences(document, keyInfo.KeyName, keyInfo.TablePrefix, snapshot);
+
+                if (references.Count == 0)
+                {
+                    await VS.StatusBar.ShowMessageAsync($"No references found for '{keyInfo.DisplayName}'.");
+                    return CommandProgression.Stop;
+                }
+
+                using ITextEdit edit = doc.TextBuffer.CreateEdit();
+
+                foreach (KeyReference reference in references.OrderByDescending(r => r.StartOffset))
+                {
+                    edit.Replace(reference.StartOffset, reference.Length, newName);
+                }
+
+                edit.Apply();
+
+                await VS.StatusBar.ShowMessageAsync($"Renamed '{keyInfo.DisplayName}' to '{newName}' ({references.Count} updates).");
+                return CommandProgression.Stop;
+            });
+        }
+
+        private static bool IsValidKeyName(string value)
+        {
+            return value.All(c => char.IsLetterOrDigit(c) || c == '_' || c == '-' || c == '.');
+        }
+
+        private static KeyInfo FindKeyAtPosition(int position, Document document)
+        {
+            foreach (KeyValueSyntax kvp in document.Model.KeyValues)
+            {
+                if (kvp.Key != null && kvp.Key.Span.ContainsPosition(position))
+                {
+                    var keyName = kvp.Key.ToString()?.Trim();
+                    return new KeyInfo
+                    {
+                        KeyName = keyName,
+                        TablePrefix = string.Empty,
+                        DisplayName = keyName
+                    };
                 }
             }
+
+            var currentTablePath = string.Empty;
+
+            foreach (TableSyntaxBase table in document.Model.Tables)
+            {
+                if (table.Span.Start.Offset > position)
+                {
+                    break;
+                }
+
+                currentTablePath = table.Name?.ToString()?.Trim() ?? string.Empty;
+
+                foreach (SyntaxNode item in table.Items)
+                {
+                    if (item is KeyValueSyntax kvp && kvp.Key != null && kvp.Key.Span.ContainsPosition(position))
+                    {
+                        var keyName = kvp.Key.ToString()?.Trim();
+                        return new KeyInfo
+                        {
+                            KeyName = keyName,
+                            TablePrefix = currentTablePath,
+                            DisplayName = string.IsNullOrEmpty(currentTablePath)
+                                ? keyName
+                                : $"{currentTablePath}.{keyName}"
+                        };
+                    }
+                }
+            }
+
+            return null;
         }
+
+        private static List<KeyReference> FindAllKeyReferences(Document document, string keyName, string tablePrefix, ITextSnapshot snapshot)
+        {
+            var references = new List<KeyReference>();
+
+            foreach (KeyValueSyntax kvp in document.Model.KeyValues)
+            {
+                if (string.IsNullOrEmpty(tablePrefix) && kvp.Key != null && kvp.Key.ToString()?.Trim() == keyName)
+                {
+                    references.Add(new KeyReference
+                    {
+                        StartOffset = kvp.Key.Span.Start.Offset,
+                        Length = kvp.Key.Span.Length
+                    });
+                }
+            }
+
+            foreach (TableSyntaxBase table in document.Model.Tables)
+            {
+                var tableName = table.Name?.ToString()?.Trim() ?? string.Empty;
+                if (tableName != tablePrefix)
+                {
+                    continue;
+                }
+
+                foreach (SyntaxNode item in table.Items)
+                {
+                    if (item is KeyValueSyntax kvp && kvp.Key != null && kvp.Key.ToString()?.Trim() == keyName)
+                    {
+                        references.Add(new KeyReference
+                        {
+                            StartOffset = kvp.Key.Span.Start.Offset,
+                            Length = kvp.Key.Span.Length
+                        });
+                    }
+                }
+            }
+
+            return references;
+        }
+
+        private static string PromptForNewName(string currentName)
+        {
+            using Form form = new()
+            {
+                Width = 440,
+                Height = 150,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                Text = "Rename TOML Key",
+                StartPosition = FormStartPosition.CenterScreen,
+                MinimizeBox = false,
+                MaximizeBox = false,
+                ShowInTaskbar = false,
+            };
+
+            Label label = new()
+            {
+                Left = 12,
+                Top = 12,
+                Width = 390,
+                Text = "New key name:"
+            };
+
+            TextBox textBox = new()
+            {
+                Left = 12,
+                Top = 34,
+                Width = 390,
+                Text = currentName
+            };
+
+            Button okButton = new()
+            {
+                Text = "OK",
+                Left = 246,
+                Width = 75,
+                Top = 68,
+                DialogResult = DialogResult.OK
+            };
+
+            Button cancelButton = new()
+            {
+                Text = "Cancel",
+                Left = 327,
+                Width = 75,
+                Top = 68,
+                DialogResult = DialogResult.Cancel
+            };
+
+            form.Controls.Add(label);
+            form.Controls.Add(textBox);
+            form.Controls.Add(okButton);
+            form.Controls.Add(cancelButton);
+            form.AcceptButton = okButton;
+            form.CancelButton = cancelButton;
+
+            DialogResult result = form.ShowDialog();
+            if (result != DialogResult.OK)
+            {
+                return null;
+            }
+
+            var value = textBox.Text?.Trim();
+            return string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+
+        private sealed class KeyInfo
+        {
+            public string KeyName { get; set; }
+            public string TablePrefix { get; set; }
+            public string DisplayName { get; set; }
+        }
+
+        private sealed class KeyReference
+        {
+            public int StartOffset { get; set; }
+            public int Length { get; set; }
+        }
+    }
+}

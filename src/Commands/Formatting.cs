@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Text;
 using Tomlyn.Parsing;
@@ -14,7 +15,6 @@ namespace TomlEditor
     /// </summary>
     public class Formatting
     {
-        private static readonly Regex KeyValuePattern = new(@"^(\s*)([^#=\[\]]+?)\s*=\s*(.*)$", RegexOptions.Compiled);
         private static readonly Regex TablePattern = new(@"^\s*\[([^\[\]]+)\]\s*$", RegexOptions.Compiled);
         private static readonly Regex ArrayTablePattern = new(@"^\s*\[\[([^\[\]]+)\]\]\s*$", RegexOptions.Compiled);
         private const string IndentUnit = "  ";
@@ -137,10 +137,8 @@ namespace TomlEditor
                     trimmed = $"{indent}[{tablePath}]";
                 }
                 // Format key-value pairs
-                else if (!trimmedStart.StartsWith("#") && KeyValuePattern.Match(trimmed) is Match kvMatch && kvMatch.Success)
+                else if (!trimmedStart.StartsWith("#") && TrySplitKeyValue(trimmed, out var key, out var value))
                 {
-                    var key = kvMatch.Groups[2].Value.Trim();
-                    var value = kvMatch.Groups[3].Value;
                     var indent = new string(' ', currentIndentLevel * IndentUnit.Length);
 
                     trimmed = $"{indent}{key} = {value}";
@@ -245,9 +243,96 @@ namespace TomlEditor
             return false;
         }
 
+        private static bool TrySplitKeyValue(string line, out string key, out string value)
+        {
+            key = null;
+            value = null;
+
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                return false;
+            }
+
+            var quote = '\0';
+            var escaped = false;
+            var equalsIndex = -1;
+
+            for (var i = 0; i < line.Length; i++)
+            {
+                var c = line[i];
+
+                if (escaped)
+                {
+                    escaped = false;
+                    continue;
+                }
+
+                if (quote != '\0')
+                {
+                    if (c == '\\')
+                    {
+                        escaped = true;
+                        continue;
+                    }
+
+                    if (c == quote)
+                    {
+                        quote = '\0';
+                    }
+
+                    continue;
+                }
+
+                if (c == '"' || c == '\'')
+                {
+                    quote = c;
+                    continue;
+                }
+
+                if (c == '#')
+                {
+                    break;
+                }
+
+                if (c == '=')
+                {
+                    equalsIndex = i;
+                    break;
+                }
+            }
+
+            if (equalsIndex <= 0)
+            {
+                return false;
+            }
+
+            key = line.Substring(0, equalsIndex).Trim();
+            value = line.Substring(equalsIndex + 1).TrimStart();
+
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         private static void ReplaceAllText(ITextBuffer buffer, string newText)
         {
             buffer.Replace(new Span(0, buffer.CurrentSnapshot.Length), newText);
+        }
+
+        [Conditional("DEBUG")]
+        internal static void RunRegressionChecks()
+        {
+            var quotedEquals = "title = \"a=b\"";
+            Debug.Assert(FormatLines(quotedEquals) == quotedEquals, "Formatter should preserve '=' inside quoted values.");
+
+            var trailingComment = "name=\"value\" # keep";
+            Debug.Assert(FormatLines(trailingComment) == "name = \"value\" # keep", "Formatter should preserve trailing comments while normalizing spacing.");
+
+            var simple = "a=1";
+            Debug.Assert(FormatLines(simple) == "a = 1", "Formatter should normalize basic key-value spacing.");
         }
     }
 }
