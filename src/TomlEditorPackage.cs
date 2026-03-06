@@ -42,7 +42,7 @@ namespace TomlEditor
             await Commenting.InitializeAsync();
             await Formatting.InitializeAsync();
             await RenameKeyCommand.InitializeAsync();
-            await SchemaQuickFixCommand.InitializeAsync();
+            await SchemaQuickFixCommand.InitializeAsync(this);
             await GoToDefinitionCommand.InitializeAsync();
             await FindAllReferencesCommand.InitializeAsync();
         }

@@ -165,7 +165,7 @@ When schema validation is available, the extension can apply simple fixes direct
 - Remove unknown keys reported by schema validation
 - Insert missing required key stubs
 
-Use quick actions on TOML files to apply the first available schema fix.
+Use **Tools > Apply TOML Schema Quick Fix** to apply the first available schema fix.
 
 ### Go to Definition
 

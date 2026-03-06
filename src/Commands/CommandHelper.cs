@@ -1,6 +1,8 @@
 using System.Linq;
+using System.ComponentModel.Design;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Text;
+using Microsoft.VisualStudio.Shell;
 using NJsonSchema.Validation;
 using TomlEditor.Schema;
 using Tomlyn.Syntax;
@@ -43,65 +45,90 @@ namespace TomlEditor.Commands
         /// <summary>
         /// Initializes schema quick-fix command interception.
         /// </summary>
-        public static async Task InitializeAsync()
+        public static async Task InitializeAsync(AsyncPackage package)
         {
-            await VS.Commands.InterceptAsync(VSConstants.VSStd2KCmdID.QUICKINFO, Execute);
+            if (package == null)
+            {
+                throw new ArgumentNullException(nameof(package));
+            }
+
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+            var commandService = await package.GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
+            if (commandService == null)
+            {
+                return;
+            }
+
+            CommandID commandId = new(PackageGuids.TomlEditor, PackageIds.ApplySchemaQuickFix);
+            OleMenuCommand command = new(async (_, _) => await ExecuteAsync(), commandId);
+            command.BeforeQueryStatus += (_, _) =>
+            {
+                var isToml = ThreadHelper.JoinableTaskFactory.Run(() => IsTomlDocumentActiveAsync());
+                command.Enabled = isToml;
+                command.Visible = isToml;
+            };
+
+            commandService.AddCommand(command);
         }
 
-        private static CommandProgression Execute()
+        private static async System.Threading.Tasks.Task<bool> IsTomlDocumentActiveAsync()
         {
-            return ThreadHelper.JoinableTaskFactory.Run(async () =>
+            DocumentView doc = await VS.Documents.GetActiveDocumentViewAsync();
+            return doc?.TextBuffer != null && doc.TextBuffer.ContentType.IsOfType(Constants.LanguageName);
+        }
+
+        private static async Task ExecuteAsync()
+        {
+            DocumentView doc = await VS.Documents.GetActiveDocumentViewAsync();
+
+            if (doc?.TextBuffer == null || !doc.TextBuffer.ContentType.IsOfType(Constants.LanguageName))
             {
-                DocumentView doc = await VS.Documents.GetActiveDocumentViewAsync();
+                return;
+            }
 
-                if (doc?.TextBuffer == null || !doc.TextBuffer.ContentType.IsOfType(Constants.LanguageName))
-                {
-                    return CommandProgression.Continue;
-                }
+            ITextSnapshot snapshot = doc.TextBuffer.CurrentSnapshot;
+            var text = snapshot.GetText();
+            Document document = doc.TextBuffer.GetDocument();
+            var fileName = document?.FileName;
 
-                ITextSnapshot snapshot = doc.TextBuffer.CurrentSnapshot;
-                var text = snapshot.GetText();
-                Document document = doc.TextBuffer.GetDocument();
-                var fileName = document?.FileName;
+            if (!TomlSchemaService.HasSchema(text, fileName))
+            {
+                doc.TextBuffer.Insert(0, SchemaDirectiveTemplate + Environment.NewLine);
+                await VS.StatusBar.ShowMessageAsync("Inserted schema directive template.");
+                return;
+            }
 
-                if (!TomlSchemaService.HasSchema(text, fileName))
-                {
-                    doc.TextBuffer.Insert(0, SchemaDirectiveTemplate + Environment.NewLine);
-                    await VS.StatusBar.ShowMessageAsync("Inserted schema directive template.");
-                    return CommandProgression.Stop;
-                }
+            if (document?.Model == null)
+            {
+                await VS.StatusBar.ShowMessageAsync("TOML model is not ready yet. Try again.");
+                return;
+            }
 
-                if (document?.Model == null)
-                {
-                    return CommandProgression.Continue;
-                }
-
-                var schemaService = TomlSchemaService.Shared;
-                var errors = await schemaService.ValidateAsync(text, fileName);
-                if (errors == null || errors.Count == 0)
-                {
-                    await VS.StatusBar.ShowMessageAsync("No schema fixes available.");
-                    return CommandProgression.Stop;
-                }
-
-                foreach (SchemaValidationError error in errors)
-                {
-                    if (TryApplyUnknownKeyFix(doc.TextBuffer, snapshot, document, error))
-                    {
-                        await VS.StatusBar.ShowMessageAsync("Applied schema fix: removed unknown key.");
-                        return CommandProgression.Stop;
-                    }
-
-                    if (TryApplyMissingRequiredFix(doc.TextBuffer, snapshot, document, error))
-                    {
-                        await VS.StatusBar.ShowMessageAsync("Applied schema fix: added missing required key.");
-                        return CommandProgression.Stop;
-                    }
-                }
-
+            var schemaService = TomlSchemaService.Shared;
+            var errors = await schemaService.ValidateAsync(text, fileName);
+            if (errors == null || errors.Count == 0)
+            {
                 await VS.StatusBar.ShowMessageAsync("No schema fixes available.");
-                return CommandProgression.Stop;
-            });
+                return;
+            }
+
+            foreach (SchemaValidationError error in errors)
+            {
+                if (TryApplyUnknownKeyFix(doc.TextBuffer, snapshot, document, error))
+                {
+                    await VS.StatusBar.ShowMessageAsync("Applied schema fix: removed unknown key.");
+                    return;
+                }
+
+                if (TryApplyMissingRequiredFix(doc.TextBuffer, snapshot, document, error))
+                {
+                    await VS.StatusBar.ShowMessageAsync("Applied schema fix: added missing required key.");
+                    return;
+                }
+            }
+
+            await VS.StatusBar.ShowMessageAsync("No schema fixes available.");
         }
 
         private static bool TryApplyUnknownKeyFix(ITextBuffer buffer, ITextSnapshot snapshot, Document document, SchemaValidationError error)

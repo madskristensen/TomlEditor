@@ -7,10 +7,27 @@
   <Include href="VSGlobals.vsct"/>
 
   <Commands package="TomlEditor">
+    <Groups>
+      <Group guid="TomlEditor" id="SchemaCommandsGroup" priority="0x0600">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS" />
+      </Group>
+    </Groups>
+
+    <Buttons>
+      <Button guid="TomlEditor" id="ApplySchemaQuickFix" priority="0x0100" type="Button">
+        <Parent guid="TomlEditor" id="SchemaCommandsGroup" />
+        <Strings>
+          <ButtonText>Apply TOML Schema Quick Fix</ButtonText>
+        </Strings>
+      </Button>
+    </Buttons>
   </Commands>
 
   <Symbols>
     <GuidSymbol name="EditorFactory" value="{3d861be2-55d5-4943-8aac-38ba31699544}" />    
-    <GuidSymbol name="TomlEditor" value="{40f7b769-cb63-4ccd-a80c-1fe6a0a07665}" />
+    <GuidSymbol name="TomlEditor" value="{40f7b769-cb63-4ccd-a80c-1fe6a0a07665}">
+      <IDSymbol name="ApplySchemaQuickFix" value="0x0100" />
+      <IDSymbol name="SchemaCommandsGroup" value="0x1020" />
+    </GuidSymbol>
   </Symbols>
 </CommandTable>

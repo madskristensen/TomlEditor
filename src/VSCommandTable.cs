@@ -25,5 +25,7 @@ namespace TomlEditor
     /// </summary>
     internal sealed partial class PackageIds
     {
+        public const int ApplySchemaQuickFix = 0x0100;
+        public const int SchemaCommandsGroup = 0x1020;
     }
 }

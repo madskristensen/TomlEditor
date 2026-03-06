@@ -307,7 +307,20 @@ namespace TomlEditor.Commands
                     return CommandProgression.Stop;
                 }
 
-                var newName = PromptForNewName(keyInfo.KeyName);
+                ITextSnapshot snapshot = doc.TextBuffer.CurrentSnapshot;
+                List<KeyReference> references = FindAllKeyReferences(document, keyInfo.KeyName, keyInfo.TablePrefix, snapshot);
+
+                if (references.Count == 0)
+                {
+                    await VS.StatusBar.ShowMessageAsync($"No references found for '{keyInfo.DisplayName}'.");
+                    return CommandProgression.Stop;
+                }
+
+                var scopeDescription = string.IsNullOrEmpty(keyInfo.TablePrefix)
+                    ? "root-level keys"
+                    : $"table '{keyInfo.TablePrefix}'";
+
+                var newName = PromptForNewName(keyInfo.KeyName, scopeDescription, references.Count);
                 if (newName == null)
                 {
                     return CommandProgression.Stop;
@@ -324,12 +337,9 @@ namespace TomlEditor.Commands
                     return CommandProgression.Stop;
                 }
 
-                ITextSnapshot snapshot = doc.TextBuffer.CurrentSnapshot;
-                List<KeyReference> references = FindAllKeyReferences(document, keyInfo.KeyName, keyInfo.TablePrefix, snapshot);
-
-                if (references.Count == 0)
+                if (ScopeContainsKey(document, keyInfo.TablePrefix, newName))
                 {
-                    await VS.StatusBar.ShowMessageAsync($"No references found for '{keyInfo.DisplayName}'.");
+                    await VS.StatusBar.ShowMessageAsync($"Cannot rename to '{newName}' because that key already exists in the target scope.");
                     return CommandProgression.Stop;
                 }
 
@@ -439,12 +449,49 @@ namespace TomlEditor.Commands
             return references;
         }
 
-        private static string PromptForNewName(string currentName)
+        private static bool ScopeContainsKey(Document document, string tablePrefix, string keyName)
+        {
+            if (document == null)
+            {
+                throw new ArgumentNullException(nameof(document));
+            }
+
+            if (keyName == null)
+            {
+                throw new ArgumentNullException(nameof(keyName));
+            }
+
+            if (string.IsNullOrEmpty(tablePrefix))
+            {
+                return document.Model.KeyValues
+                    .Any(kvp => string.Equals(kvp.Key?.ToString()?.Trim(), keyName, StringComparison.Ordinal));
+            }
+
+            foreach (TableSyntaxBase table in document.Model.Tables)
+            {
+                var tableName = table.Name?.ToString()?.Trim() ?? string.Empty;
+                if (!string.Equals(tableName, tablePrefix, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (table.Items
+                    .OfType<KeyValueSyntax>()
+                    .Any(kvp => string.Equals(kvp.Key?.ToString()?.Trim(), keyName, StringComparison.Ordinal)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string PromptForNewName(string currentName, string scopeDescription, int referenceCount)
         {
             using Form form = new()
             {
-                Width = 440,
-                Height = 150,
+                Width = 520,
+                Height = 200,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 Text = "Rename TOML Key",
                 StartPosition = FormStartPosition.CenterScreen,
@@ -453,10 +500,18 @@ namespace TomlEditor.Commands
                 ShowInTaskbar = false,
             };
 
-            Label label = new()
+            Label scopeLabel = new()
             {
                 Left = 12,
                 Top = 12,
+                Width = 480,
+                Text = $"Scope: {scopeDescription} ({referenceCount} reference(s))"
+            };
+
+            Label label = new()
+            {
+                Left = 12,
+                Top = 36,
                 Width = 390,
                 Text = "New key name:"
             };
@@ -464,35 +519,77 @@ namespace TomlEditor.Commands
             TextBox textBox = new()
             {
                 Left = 12,
-                Top = 34,
-                Width = 390,
+                Top = 58,
+                Width = 480,
                 Text = currentName
+            };
+
+            Label validationLabel = new()
+            {
+                Left = 12,
+                Top = 86,
+                Width = 480,
+                Height = 36,
+                Text = string.Empty
             };
 
             Button okButton = new()
             {
                 Text = "OK",
-                Left = 246,
+                Left = 336,
                 Width = 75,
-                Top = 68,
+                Top = 124,
                 DialogResult = DialogResult.OK
             };
 
             Button cancelButton = new()
             {
                 Text = "Cancel",
-                Left = 327,
+                Left = 417,
                 Width = 75,
-                Top = 68,
+                Top = 124,
                 DialogResult = DialogResult.Cancel
             };
 
+            void ValidateInput(object _, EventArgs __)
+            {
+                var candidate = textBox.Text?.Trim() ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(candidate))
+                {
+                    validationLabel.Text = "Key name is required.";
+                    okButton.Enabled = false;
+                    return;
+                }
+
+                if (!IsValidKeyName(candidate))
+                {
+                    validationLabel.Text = "Key name can only contain letters, digits, '_', '-', or '.'.";
+                    okButton.Enabled = false;
+                    return;
+                }
+
+                validationLabel.Text = string.Empty;
+                okButton.Enabled = true;
+            }
+
+            textBox.TextChanged += ValidateInput;
+
+            form.Controls.Add(scopeLabel);
             form.Controls.Add(label);
             form.Controls.Add(textBox);
+            form.Controls.Add(validationLabel);
             form.Controls.Add(okButton);
             form.Controls.Add(cancelButton);
             form.AcceptButton = okButton;
             form.CancelButton = cancelButton;
+
+            form.Shown += (_, _) =>
+            {
+                textBox.Focus();
+                textBox.SelectAll();
+                ValidateInput(null, EventArgs.Empty);
+            };
 
             DialogResult result = form.ShowDialog();
             if (result != DialogResult.OK)
